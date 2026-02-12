@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "me.ganto.app",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -18,8 +18,14 @@
       }
     ],
     "security": {
-      "csp": null
-    }
+      "csp": null,
+      "dangerousDisableAssetCspModification": false,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,

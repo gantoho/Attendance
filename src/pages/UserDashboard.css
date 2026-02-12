@@ -1,0 +1,46 @@
+.user-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.dashboard-card {
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.location-card,
+.checkin-card,
+.last-record-card,
+.history-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.checkin-button {
+  height: 60px;
+  font-size: 20px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+}
+
+.checkin-button:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #653a8f 100%);
+}
