@@ -1,6 +1,6 @@
 .user-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #f5f7fa;
   padding: 20px;
 }
 
@@ -36,11 +36,11 @@
   height: 60px;
   font-size: 20px;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border: none;
   border-radius: 8px;
 }
 
 .checkin-button:hover {
-  background: linear-gradient(135deg, #5568d3 0%, #653a8f 100%);
+  background: #5568d3;
 }
