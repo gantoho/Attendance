@@ -1,46 +1,228 @@
-.user-dashboard {
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding: 20px;
+.user-info-bar {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.dashboard-card {
-  max-width: 800px;
-  margin: 0 auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+  margin-right: var(--spacing-md);
 }
 
-.dashboard-header {
+.user-details h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-details p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.map-container-wrapper {
+  position: relative;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  height: 200px;
+}
+
+#user-map {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md);
 }
 
-.dashboard-header h2 {
+.card-header h3 {
   margin: 0;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 600;
+  color: var(--text-main);
 }
 
-.location-card,
-.checkin-card,
-.last-record-card,
-.history-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
+.current-date {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.checkin-button {
-  height: 60px;
-  font-size: 20px;
-  font-weight: 600;
-  background: #000000;
+.check-in-card {
+  text-align: center;
+}
+
+.clock-display {
+  margin-bottom: var(--spacing-lg);
+}
+
+.clock-display .time {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: monospace;
+}
+
+.clock-display .location-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.action-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.check-in-button {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
   border: none;
-  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #0050b3 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(0, 122, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
 }
 
-.checkin-button:hover {
-  background: #5568d3;
+.check-in-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.check-in-button:hover::before {
+  opacity: 1;
+}
+
+.check-in-button:active:not(:disabled) {
+  transform: scale(0.9);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+}
+
+.check-in-button.loading {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(0, 122, 255, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+}
+
+.check-in-button.disabled {
+  background: #E5E5EA;
+  color: #8E8E93;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: scale(1) !important;
+}
+
+.button-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.range-warning {
+  color: var(--error-color);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: fadeIn 0.3s ease;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.record-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid #f0f0f2;
+}
+
+.record-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.record-time {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 45px;
+}
+
+.record-info {
+  flex: 1;
+}
+
+.record-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.record-loc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.empty-records {
+  text-align: center;
+  padding: var(--spacing-lg) 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

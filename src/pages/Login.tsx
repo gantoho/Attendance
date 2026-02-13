@@ -40,29 +40,34 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <Card className="login-card" title="系统登录" variant="borderless">
+      <div className="login-header">
+        <h1>考勤打卡</h1>
+        <p>欢迎回来，请登录您的账号</p>
+      </div>
+      <Card className="login-card" variant="borderless">
         <Form
           name="login"
           onFinish={onFinish}
           autoComplete="off"
           size="large"
+          className="login-form"
         >
           <Form.Item
             name="username"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
-            <Input prefix={<UserOutlined />} placeholder="用户名" />
+            <Input prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} placeholder="用户名" />
           </Form.Item>
 
           <Form.Item
             name="password"
             rules={[{ required: true, message: '请输入密码' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+            <Input.Password prefix={<LockOutlined style={{ color: '#bfbfbf' }} />} placeholder="密码" />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block>
+            <Button type="primary" htmlType="submit" loading={loading} block className="login-submit-btn">
               登录
             </Button>
           </Form.Item>

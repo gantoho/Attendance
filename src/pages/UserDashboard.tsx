@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Descriptions, Tag, Space, message, Spin, Result } from 'antd';
+import { Button, message, Spin, Result } from 'antd';
 import { EnvironmentOutlined, CheckCircleOutlined, CloseCircleOutlined, LogoutOutlined, HistoryOutlined } from '@ant-design/icons';
 import { commands } from '../api/tauri';
 import { useAuthStore } from '../store/authStore';
@@ -8,6 +8,7 @@ import type { AttendanceRecord, Location } from '../types';
 import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MobileLayout from '../components/MobileLayout';
 import './UserDashboard.css';
 
 export default function UserDashboard() {
@@ -15,13 +16,20 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [lastRecord, setLastRecord] = useState<AttendanceRecord | null>(null);
   const [assignedLocation, setAssignedLocation] = useState<Location | null>(null);
   const [map, setMap] = useState<L.Map | null>(null);
   const [currentMarker, setCurrentMarker] = useState<L.Marker | null>(null);
+  const [currentTime, setCurrentTime] = useState(dayjs());
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(dayjs());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -143,10 +151,7 @@ export default function UserDashboard() {
     if (!user) return;
     try {
       const data = await commands.getAttendanceRecords(user.id);
-      setRecords(data);
-      if (data.length > 0) {
-        setLastRecord(data[0]);
-      }
+      setRecords(data.slice(0, 10)); // 只显示最近10条
     } catch (error: any) {
       const errorMessage = error?.message || error || '加载打卡记录失败';
       message.error(errorMessage);
@@ -170,9 +175,6 @@ export default function UserDashboard() {
         loadRecords();
       } else {
         message.error(response.message || '打卡失败');
-        if (response.record) {
-          setLastRecord(response.record);
-        }
       }
     } catch (error: any) {
       const errorMessage = error?.message || error || '打卡失败，请重试';
@@ -188,141 +190,123 @@ export default function UserDashboard() {
     navigate('/login');
   };
 
+  const isWithinRange = () => {
+    if (!location || !assignedLocation) return false;
+    const from = L.latLng(location.latitude, location.longitude);
+    const to = L.latLng(assignedLocation.latitude, assignedLocation.longitude);
+    const distance = from.distanceTo(to);
+    return distance <= assignedLocation.radius;
+  };
+
   if (!user) {
     return null;
   }
 
   return (
-    <div className="user-dashboard">
-      <Card className="dashboard-card">
-        <div className="dashboard-header">
-          <h2>欢迎，{user.username}</h2>
-          <Button icon={<LogoutOutlined />} onClick={handleLogout}>
-            退出登录
-          </Button>
+    <MobileLayout
+      title="工作台"
+      headerExtra={
+        <Button 
+          type="text" 
+          icon={<LogoutOutlined />} 
+          onClick={handleLogout}
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          退出
+        </Button>
+      }
+    >
+      <div className="user-info-bar">
+        <div className="user-avatar">
+          {user.username.substring(0, 1).toUpperCase()}
         </div>
+        <div className="user-details">
+          <h3>{user.username}</h3>
+          <p>{user.role === 'admin' ? '管理员' : '普通员工'}</p>
+        </div>
+      </div>
 
-        {!assignedLocation ? (
-          <Card className="warning-card">
-            <Result
-              status="warning"
-              title="未分配打卡位置"
-              subTitle="请联系管理员为您分配打卡位置"
-            />
-          </Card>
-        ) : (
-          <Spin spinning={loading}>
-            <Card className="location-card" title={<><EnvironmentOutlined /> 当前位置</>}>
-              {location ? (
-                <Descriptions column={1}>
-                  <Descriptions.Item label="纬度">{location.latitude.toFixed(6)}</Descriptions.Item>
-                  <Descriptions.Item label="经度">{location.longitude.toFixed(6)}</Descriptions.Item>
-                </Descriptions>
-              ) : (
-                <p>正在获取位置...</p>
-              )}
-              <Button onClick={getCurrentLocation} style={{ marginTop: 10 }}>
-                刷新位置
-              </Button>
-            </Card>
-
-            <Card className="map-card" title="位置地图">
-              <div id="user-map" style={{ height: '400px', width: '100%', borderRadius: '8px' }}></div>
-              <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#1890ff' }}></div>
-                  <span>当前位置</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#52c41a' }}></div>
-                  <span>打卡位置 (半径: {assignedLocation.radius}米)</span>
-                </div>
+      {!assignedLocation ? (
+        <div className="app-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <Result
+            status="warning"
+            title="未分配打卡位置"
+            subTitle="请联系管理员为您分配打卡位置"
+          />
+        </div>
+      ) : (
+        <>
+          <div className="map-container-wrapper">
+            <div id="user-map"></div>
+            {loading && (
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', zIndex: 1000 }}>
+                <Spin tip="定位中..." />
               </div>
-            </Card>
-
-            <Card className="checkin-card">
-              <Button
-                type="primary"
-                size="large"
-                icon={<CheckCircleOutlined />}
-                onClick={handleCheckIn}
-                loading={checkingIn}
-                disabled={!location}
-                block
-                className="checkin-button"
-              >
-                立即打卡
-              </Button>
-            </Card>
-
-            {lastRecord && (
-              <Card className="last-record-card" title={<><HistoryOutlined /> 最近打卡记录</>}>
-                <Descriptions column={1}>
-                  <Descriptions.Item label="时间">
-                    {dayjs(lastRecord.timestamp * 1000).format('YYYY-MM-DD HH:mm:ss')}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="状态">
-                    {lastRecord.status === 'success' ? (
-                      <Tag icon={<CheckCircleOutlined />} color="success">
-                        打卡成功
-                      </Tag>
-                    ) : (
-                      <Tag icon={<CloseCircleOutlined />} color="error">
-                        打卡失败
-                      </Tag>
-                    )}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="位置">
-                    {lastRecord.latitude.toFixed(6)}, {lastRecord.longitude.toFixed(6)}
-                  </Descriptions.Item>
-                  {lastRecord.errorMessage && (
-                    <Descriptions.Item label="失败原因">
-                      {lastRecord.errorMessage}
-                    </Descriptions.Item>
-                  )}
-                </Descriptions>
-              </Card>
             )}
+          </div>
 
-            <Card className="history-card" title="打卡历史">
-              {records.length === 0 ? (
-                <Result status="info" title="暂无打卡记录" />
-              ) : (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  {records.map((record) => (
-                    <Card key={record.id} size="small">
-                      <Descriptions column={2} size="small">
-                        <Descriptions.Item label="时间" span={2}>
-                          {dayjs(record.timestamp * 1000).format('YYYY-MM-DD HH:mm:ss')}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="状态">
-                          {record.status === 'success' ? (
-                            <Tag icon={<CheckCircleOutlined />} color="success">
-                              成功
-                            </Tag>
-                          ) : (
-                            <Tag icon={<CloseCircleOutlined />} color="error">
-                              失败
-                            </Tag>
-                          )}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="位置">
-                          {record.latitude.toFixed(4)}, {record.longitude.toFixed(4)}
-                        </Descriptions.Item>
-                        {record.errorMessage && (
-                          <Descriptions.Item label="原因" span={2}>
-                            {record.errorMessage}
-                          </Descriptions.Item>
-                        )}
-                      </Descriptions>
-                    </Card>
-                  ))}
-                </Space>
+          <div className="app-card check-in-card">
+            <div className="card-header">
+              <h3>打卡上报</h3>
+              <span className="current-date">{currentTime.format('YYYY年MM月DD日')}</span>
+            </div>
+            
+            <div className="clock-display">
+              <div className="time">{currentTime.format('HH:mm:ss')}</div>
+              <div className="location-info">
+                <EnvironmentOutlined /> {assignedLocation.name}
+              </div>
+            </div>
+
+            <div className="action-area">
+              <button 
+                className={`check-in-button ${!isWithinRange() ? 'disabled' : ''} ${checkingIn ? 'loading' : ''}`}
+                onClick={handleCheckIn}
+                disabled={checkingIn || !isWithinRange()}
+              >
+                <div className="button-content">
+                  <span className="button-text">{checkingIn ? '打卡中' : '上班打卡'}</span>
+                </div>
+              </button>
+              
+              {!isWithinRange() && (
+                <div className="range-warning">
+                  <CloseCircleOutlined /> 您不在打卡范围内
+                </div>
               )}
-            </Card>
-          </Spin>
-        )}
-      </Card>
-    </div>
+            </div>
+          </div>
+
+          <div className="app-card">
+            <div className="card-header">
+              <h3>打卡记录</h3>
+              <HistoryOutlined />
+            </div>
+            <div className="records-list">
+              {records.length > 0 ? (
+                records.map((record) => (
+                  <div key={record.id} className="record-item">
+                    <div className="record-time">
+                      {dayjs(record.timestamp * 1000).format('HH:mm')}
+                    </div>
+                    <div className="record-info">
+                      <div className="record-status">
+                        <CheckCircleOutlined style={{ color: 'var(--success-color)' }} />
+                        <span>打卡成功</span>
+                      </div>
+                      <div className="record-loc">
+                        {assignedLocation.name}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-records">今日暂无打卡记录</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </MobileLayout>
   );
 }

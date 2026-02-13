@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Layout,
-  Menu,
-  Card,
-  Table,
   Button,
   Modal,
   Form,
@@ -11,10 +7,8 @@ import {
   InputNumber,
   Select,
   message,
-  Space,
   Tag,
   Popconfirm,
-  Divider,
 } from 'antd';
 import {
   UserOutlined,
@@ -31,9 +25,8 @@ import { useNavigate } from 'react-router-dom';
 import type { User, Location, AttendanceRecord } from '../types';
 import dayjs from 'dayjs';
 import MapSelector from '../components/MapSelector';
+import MobileLayout from '../components/MobileLayout';
 import './AdminDashboard.css';
-
-const { Header, Content, Sider } = Layout;
 
 export default function AdminDashboard() {
   const [selectedMenu, setSelectedMenu] = useState('users');
@@ -191,7 +184,10 @@ export default function AdminDashboard() {
       message.success('分配位置成功');
       setAssignLocationModalVisible(false);
       setSelectedUser(null);
-      loadData();
+      // 分配成功后，手动更新本地状态，避免重新加载整个列表
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.id === selectedUser.id ? { ...u, locationId: values.locationId } : u
+      ));
     } catch (error: any) {
       const errorMessage = error?.message || error || '分配位置失败';
       message.error(errorMessage);
@@ -204,253 +200,284 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
-  if (!user) {
-    return null;
-  }
-
-  const userColumns = [
-    { title: '用户名', dataIndex: 'username', key: 'username' },
-    { title: '角色', dataIndex: 'role', key: 'role', render: (role: string) => <Tag>{role}</Tag> },
-    {
-      title: '打卡位置',
-      key: 'location',
-      render: (_: any, record: User) => {
-        const location = locations.find(l => l.id === record.locationId);
-        return location ? (
-          <Tag color="blue">{location.name}</Tag>
-        ) : (
-          <Tag color="default">未分配</Tag>
+  const renderContent = () => {
+    switch (selectedMenu) {
+      case 'users':
+        return (
+          <div className="admin-card">
+            <div className="card-header">
+              <h3>员工管理</h3>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setUserModalVisible(true)}>
+                添加
+              </Button>
+            </div>
+            <div className="admin-list">
+              {users.map(u => (
+                <div key={u.id} className="admin-list-item">
+                  <div className="list-item-title">{u.username}</div>
+                  <div className="list-item-sub">
+                    {u.locationId ? (
+                      <>
+                        <EnvironmentOutlined />
+                        {locations.find(l => l.id === u.locationId)?.name || '未知位置'}
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--error-color)' }}>未分配位置</span>
+                    )}
+                  </div>
+                  <div className="list-item-actions">
+                    <Button 
+                      type="primary"
+                      ghost
+                      size="small" 
+                      icon={<EnvironmentOutlined />} 
+                      onClick={() => handleAssignLocation(u)}
+                    >
+                      分配
+                    </Button>
+                    <Popconfirm title="确定删除吗？" onConfirm={() => handleDeleteUser(u.id)}>
+                      <Button size="small" danger ghost icon={<DeleteOutlined />}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         );
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: User) => (
-        <Space>
-          <Button type="link" icon={<EnvironmentOutlined />} onClick={() => handleAssignLocation(record)}>
-            分配位置
-          </Button>
-          <Popconfirm
-            title="确定要删除这个用户吗？"
-            onConfirm={() => handleDeleteUser(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  const locationColumns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    {
-      title: '位置',
-      key: 'location',
-      render: (_: any, record: Location) => (
-        <span>
-          {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
-        </span>
-      ),
-    },
-    { title: '半径(米)', dataIndex: 'radius', key: 'radius' },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: Location) => (
-        <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={() => handleEditLocation(record)}>
-            编辑
-          </Button>
-          <Popconfirm
-            title="确定要删除这个位置吗？"
-            onConfirm={() => handleDeleteLocation(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  const recordColumns = [
-    { title: '用户ID', dataIndex: 'user_id', key: 'user_id' },
-    {
-      title: '时间',
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-      render: (timestamp: number) => dayjs(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss'),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'success' ? 'success' : 'error'}>
-          {status === 'success' ? '成功' : '失败'}
-        </Tag>
-      ),
-    },
-    {
-      title: '位置',
-      key: 'location',
-      render: (_: any, record: AttendanceRecord) => (
-        <span>
-          {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
-        </span>
-      ),
-    },
-    {
-      title: '失败原因',
-      dataIndex: 'error_message',
-      key: 'error_message',
-      render: (msg: string | null) => msg || '-',
-    },
-  ];
+      case 'locations':
+        return (
+          <div className="admin-card">
+            <div className="card-header">
+              <h3>考勤点管理</h3>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+                setEditingLocation(null);
+                locationForm.resetFields();
+                setLocationModalVisible(true);
+              }}>
+                添加
+              </Button>
+            </div>
+            <div className="admin-list">
+              {locations.map(l => (
+                <div key={l.id} className="admin-list-item">
+                  <div className="list-item-title">{l.name}</div>
+                  <div className="list-item-sub">
+                    <EnvironmentOutlined />
+                    半径: {l.radius}米 | {l.latitude.toFixed(4)}, {l.longitude.toFixed(4)}
+                  </div>
+                  <div className="list-item-actions">
+                    <Button 
+                      type="primary"
+                      ghost
+                      size="small" 
+                      icon={<EditOutlined />} 
+                      onClick={() => handleEditLocation(l)}
+                    >
+                      编辑
+                    </Button>
+                    <Popconfirm title="确定删除吗？" onConfirm={() => handleDeleteLocation(l.id)}>
+                      <Button size="small" danger ghost icon={<DeleteOutlined />}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'records':
+        return (
+          <div className="admin-card">
+            <div className="card-header">
+              <h3>考勤记录</h3>
+            </div>
+            <div className="admin-list">
+              {records.map(r => {
+                const userName = users.find(u => u.id === r.userId)?.username || '未知员工';
+                const locationName = locations.find(l => l.id === r.locationId)?.name || '未知地点';
+                return (
+                  <div key={r.id} className="admin-list-item">
+                    <div className="list-item-title">{userName}</div>
+                    <div className="list-item-sub">
+                      <EnvironmentOutlined />
+                      {locationName}
+                    </div>
+                    <div className="list-item-sub">
+                      <HistoryOutlined />
+                      {dayjs(r.timestamp * 1000).format('YYYY-MM-DD HH:mm:ss')}
+                    </div>
+                    <div className="list-item-actions" style={{ borderTop: 'none', marginTop: '8px', paddingTop: 0 }}>
+                      <Tag color={r.status === 'success' ? 'success' : 'error'} style={{ borderRadius: '6px', margin: 0 }}>
+                        {r.status === 'success' ? '打卡正常' : '打卡异常'}
+                      </Tag>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <Layout className="admin-dashboard">
-      <Header className="dashboard-header">
-        <div className="header-title">打卡管理系统 - 管理员</div>
-        <Button icon={<LogoutOutlined />} onClick={handleLogout}>
-          退出登录
+    <MobileLayout
+      title="管理后台"
+      headerExtra={
+        <Button 
+          type="text" 
+          icon={<LogoutOutlined />} 
+          onClick={handleLogout}
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          退出
         </Button>
-      </Header>
-      <Layout>
-        <Sider width={200} className="dashboard-sider">
-          <Menu
-            mode="inline"
-            selectedKeys={[selectedMenu]}
-            onClick={({ key }) => setSelectedMenu(key)}
-            items={[
-              { key: 'users', icon: <UserOutlined />, label: '用户管理' },
-              { key: 'locations', icon: <EnvironmentOutlined />, label: '位置管理' },
-              { key: 'records', icon: <HistoryOutlined />, label: '打卡记录' },
-            ]}
-          />
-        </Sider>
-        <Content className="dashboard-content">
-          {selectedMenu === 'users' && (
-            <Card title="用户管理" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setUserModalVisible(true)}>添加用户</Button>}>
-              <Table dataSource={users} columns={userColumns} rowKey="id" />
-            </Card>
-          )}
+      }
+      bottomNav={
+        <div className="admin-bottom-nav">
+          <div 
+            className={`nav-item ${selectedMenu === 'users' ? 'active' : ''}`}
+            onClick={() => setSelectedMenu('users')}
+          >
+            <UserOutlined />
+            <span>员工</span>
+          </div>
+          <div 
+            className={`nav-item ${selectedMenu === 'locations' ? 'active' : ''}`}
+            onClick={() => setSelectedMenu('locations')}
+          >
+            <EnvironmentOutlined />
+            <span>网点</span>
+          </div>
+          <div 
+            className={`nav-item ${selectedMenu === 'records' ? 'active' : ''}`}
+            onClick={() => setSelectedMenu('records')}
+          >
+            <HistoryOutlined />
+            <span>记录</span>
+          </div>
+        </div>
+      }
+    >
+      <div className="admin-content-wrapper">
+        {renderContent()}
+      </div>
 
-          {selectedMenu === 'locations' && (
-            <Card title="位置管理" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingLocation(null); locationForm.resetFields(); setLocationModalVisible(true); }}>添加位置</Button>}>
-              <Table dataSource={locations} columns={locationColumns} rowKey="id" />
-            </Card>
-          )}
-
-          {selectedMenu === 'records' && (
-            <Card title="打卡记录">
-              <Table dataSource={records} columns={recordColumns} rowKey="id" />
-            </Card>
-          )}
-        </Content>
-      </Layout>
-
+      {/* Modals remain the same but can be styled via CSS */}
       <Modal
-        title="添加用户"
+        title="添加员工"
         open={userModalVisible}
-        onCancel={() => { setUserModalVisible(false); form.resetFields(); }}
-        footer={null}
+        onCancel={() => setUserModalVisible(false)}
+        onOk={() => form.submit()}
+        destroyOnClose
       >
-        <Form form={form} onFinish={handleCreateUser} layout="vertical">
-          <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input />
+        <Form form={form} layout="vertical" onFinish={handleCreateUser}>
+          <Form.Item
+            name="username"
+            label="用户名"
+            rules={[{ required: true, message: '请输入用户名' }]}
+          >
+            <Input placeholder="请输入用户名" />
           </Form.Item>
-          <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              创建
-            </Button>
+          <Form.Item
+            name="password"
+            label="密码"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
+            <Input.Password placeholder="请输入密码" />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={editingLocation ? '编辑位置' : '添加位置'}
+        title={editingLocation ? '编辑打卡位置' : '添加打卡位置'}
         open={locationModalVisible}
-        onCancel={() => { setLocationModalVisible(false); setEditingLocation(null); locationForm.resetFields(); setMapPosition([39.9042, 116.4074]); }}
-        footer={null}
-        width={700}
+        onCancel={() => {
+          setLocationModalVisible(false);
+          setEditingLocation(null);
+          locationForm.resetFields();
+        }}
+        onOk={() => locationForm.submit()}
+        width={600}
+        destroyOnClose
       >
-        <Form
-          form={locationForm}
-          onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}
-          layout="vertical"
-          initialValues={{ radius: 100 }}
-        >
-          <Form.Item name="name" label="位置名称" rules={[{ required: true, message: '请输入位置名称' }]}>
-            <Input />
+        <Form form={locationForm} layout="vertical" onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}>
+          <Form.Item
+            name="name"
+            label="位置名称"
+            rules={[{ required: true, message: '请输入位置名称' }]}
+          >
+            <Input placeholder="例如：软件园办公区" />
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Form.Item
+              name="latitude"
+              label="纬度"
+              rules={[{ required: true, message: '请在地图上选择位置' }]}
+            >
+              <InputNumber style={{ width: '100%' }} readOnly />
+            </Form.Item>
+            <Form.Item
+              name="longitude"
+              label="经度"
+              rules={[{ required: true, message: '请在地图上选择位置' }]}
+            >
+              <InputNumber style={{ width: '100%' }} readOnly />
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="radius"
+            label="允许打卡半径 (米)"
+            initialValue={200}
+            rules={[{ required: true, message: '请输入半径' }]}
+          >
+            <InputNumber style={{ width: '100%' }} min={50} max={5000} />
           </Form.Item>
           
-          <Divider>地图选择</Divider>
-          
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ height: '300px', marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px' }}>选择位置:</label>
             <MapSelector 
               center={mapPosition} 
-              onChange={(lat, lng) => {
-                setMapPosition([lat, lng]);
+              onChange={(lat: number, lng: number) => {
                 locationForm.setFieldsValue({ latitude: lat, longitude: lng });
               }} 
             />
           </div>
-          
-          <Form.Item name="latitude" label="纬度" rules={[{ required: true, message: '请选择位置' }]}>
-            <InputNumber style={{ width: '100%' }} precision={6} readOnly />
-          </Form.Item>
-          <Form.Item name="longitude" label="经度" rules={[{ required: true, message: '请选择位置' }]}>
-            <InputNumber style={{ width: '100%' }} precision={6} readOnly />
-          </Form.Item>
-          <Form.Item name="radius" label="打卡半径(米)" rules={[{ required: true, message: '请输入打卡半径' }]}>
-            <InputNumber style={{ width: '100%' }} min={1} />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              {editingLocation ? '更新' : '创建'}
-            </Button>
-          </Form.Item>
         </Form>
       </Modal>
 
       <Modal
         title="分配打卡位置"
         open={assignLocationModalVisible}
-        onCancel={() => { setAssignLocationModalVisible(false); setSelectedUser(null); }}
-        footer={null}
+        onCancel={() => setAssignLocationModalVisible(false)}
+        onOk={() => {
+          const locationId = locationForm.getFieldValue('locationId');
+          handleAssignLocationSubmit({ locationId });
+        }}
+        destroyOnClose
       >
-        <Form form={locationForm} onFinish={handleAssignLocationSubmit} layout="vertical">
-          <Form.Item label="用户">
-            <Input value={selectedUser?.username} readOnly />
-          </Form.Item>
-          <Form.Item name="locationId" label="打卡位置" rules={[{ required: true, message: '请选择打卡位置' }]}>
-            <Select placeholder="请选择打卡位置">
-              {locations.map(location => (
-                <Select.Option key={location.id} value={location.id}>
-                  {location.name} ({location.latitude.toFixed(6)}, {location.longitude.toFixed(6)})
+        <Form form={locationForm} layout="vertical">
+          <p>正在为员工 <strong>{selectedUser?.username}</strong> 分配打卡位置</p>
+          <Form.Item
+            name="locationId"
+            label="选择网点"
+            rules={[{ required: true, message: '请选择位置' }]}
+          >
+            <Select placeholder="请选择位置">
+              {locations.map(loc => (
+                <Select.Option key={loc.id} value={loc.id}>
+                  {loc.name}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              分配
-            </Button>
-          </Form.Item>
         </Form>
       </Modal>
-    </Layout>
+    </MobileLayout>
   );
 }
