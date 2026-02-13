@@ -40,7 +40,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <Card className="login-card" title="打卡系统登录" variant="borderless">
+      <Card className="login-card" title="系统登录" variant="borderless">
         <Form
           name="login"
           onFinish={onFinish}
