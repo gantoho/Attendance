@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$sourceDir = "D:\Code\Trae\Attendance_Tauri\src-tauri\target\x86_64-linux-android\debug"
-$targetDir = "D:\Code\Trae\Attendance_Tauri\src-tauri\gen\android\app\src\main\jniLibs\x86_64"
+$projectRoot = $PSScriptRoot
+$sourceDir = "$projectRoot\src-tauri\target\x86_64-linux-android\debug"
+$targetDir = "$projectRoot\src-tauri\gen\android\app\src\main\jniLibs\x86_64"
 
 Write-Host "正在复制库文件..." -ForegroundColor Green
 

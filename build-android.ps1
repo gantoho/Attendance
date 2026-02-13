@@ -10,7 +10,7 @@ Write-Host "Android APK 构建脚本" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$projectRoot = "D:\Code\Trae\Attendance_Tauri"
+$projectRoot = $PSScriptRoot
 $rustTargetDir = "$projectRoot\src-tauri\target\$Target\$BuildType"
 $androidProjectDir = "$projectRoot\src-tauri\gen\android"
 

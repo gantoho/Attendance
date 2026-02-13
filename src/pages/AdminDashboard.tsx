@@ -62,12 +62,16 @@ export default function AdminDashboard() {
     if (!user) return;
     
     try {
+      // 无论当前在哪个菜单，如果 locations 为空，都加载一次 locations
+      // 这样可以确保在“用户管理”菜单下也能正确显示用户的打卡位置名称，以及在分配位置时有数据
+      if (locations.length === 0 || selectedMenu === 'locations') {
+        const locationData = await commands.getLocationsByAdmin(user.id);
+        setLocations(locationData);
+      }
+
       if (selectedMenu === 'users') {
         const data = await commands.getUsersByAdmin(user.id);
         setUsers(data);
-      } else if (selectedMenu === 'locations') {
-        const data = await commands.getLocationsByAdmin(user.id);
-        setLocations(data);
       } else if (selectedMenu === 'records') {
         const data = await commands.getAttendanceRecordsByAdmin(user.id);
         setRecords(data);

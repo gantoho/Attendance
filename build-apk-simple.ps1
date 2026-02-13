@@ -5,7 +5,7 @@ Write-Host "Android APK Quick Build Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$projectRoot = "D:\Code\Trae\Attendance_Tauri"
+$projectRoot = $PSScriptRoot
 $androidProjectDir = "$projectRoot\src-tauri\gen\android"
 
 $archMap = @{
