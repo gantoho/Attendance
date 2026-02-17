@@ -1,6 +1,7 @@
 use crate::models::{User, Location, AttendanceRecord};
 use sled::{Db, Tree};
 use std::sync::Arc;
+use std::path::PathBuf;
 use dirs;
 use serde_json;
 
@@ -13,20 +14,40 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let data_dir = dirs::data_local_dir()
-            .ok_or("Failed to get data directory")?;
-        
-        let app_data_dir = data_dir.join("attendance");
-        std::fs::create_dir_all(&app_data_dir)?;
-        
-        let db_path = app_data_dir.join("attendance_db");
-        let db = Arc::new(sled::open(db_path)?);
-        
-        let users = Arc::new(db.open_tree("users")?);
-        let locations = Arc::new(db.open_tree("locations")?);
-        let records = Arc::new(db.open_tree("records")?);
-        
-        Ok(Self { db, users, locations, records })
+        let mut candidates: Vec<PathBuf> = Vec::new();
+        if let Ok(p) = std::env::var("ATTENDANCE_DATA_DIR") {
+            candidates.push(PathBuf::from(p));
+        }
+        if let Some(p) = dirs::data_local_dir() {
+            candidates.push(p.join("attendance"));
+        }
+        if let Ok(cwd) = std::env::current_dir() {
+            candidates.push(cwd.join(".data").join("attendance"));
+        }
+
+        let mut last_err: Option<Box<dyn std::error::Error>> = None;
+        for base in candidates {
+            if let Err(e) = std::fs::create_dir_all(&base) {
+                last_err = Some(Box::new(e));
+                continue;
+            }
+            let db_path = base.join("attendance_db");
+            match sled::open(&db_path) {
+                Ok(db_raw) => {
+                    let db = Arc::new(db_raw);
+                    let users = Arc::new(db.open_tree("users")?);
+                    let locations = Arc::new(db.open_tree("locations")?);
+                    let records = Arc::new(db.open_tree("records")?);
+                    return Ok(Self { db, users, locations, records });
+                }
+                Err(e) => {
+                    last_err = Some(Box::new(e));
+                    continue;
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| "Failed to initialize database".into()))
     }
     
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {

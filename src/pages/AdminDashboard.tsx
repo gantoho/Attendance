@@ -374,7 +374,7 @@ export default function AdminDashboard() {
         open={userModalVisible}
         onCancel={() => setUserModalVisible(false)}
         onOk={() => form.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" onFinish={handleCreateUser}>
           <Form.Item
@@ -404,7 +404,7 @@ export default function AdminDashboard() {
         }}
         onOk={() => locationForm.submit()}
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={locationForm} layout="vertical" onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}>
           <Form.Item
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
           const locationId = locationForm.getFieldValue('locationId');
           handleAssignLocationSubmit({ locationId });
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={locationForm} layout="vertical">
           <p>正在为员工 <strong>{selectedUser?.username}</strong> 分配打卡位置</p>

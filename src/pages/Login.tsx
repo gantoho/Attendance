@@ -11,6 +11,39 @@ export default function Login() {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
+  const getCurrentPosition = () =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('您的设备不支持地理位置功能'));
+        return;
+        }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+
+  const haversineDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const R = 6371000; // meters
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
@@ -20,12 +53,43 @@ export default function Login() {
       });
 
       if (response.success && response.user) {
-        login(response.user);
-        message.success('登录成功');
-        if (response.user.role === 'admin') {
+        const user = response.user;
+        if (user.role === 'admin') {
+          login(user);
+          message.success('登录成功');
           navigate('/admin');
-        } else {
+          return;
+        }
+
+        try {
+          const assigned = await commands.getUserLocation(user.id);
+          if (!assigned) {
+            message.error('未分配打卡位置，无法登录，请联系管理员');
+            return;
+          }
+
+          const pos = await getCurrentPosition();
+          const distance = haversineDistance(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            assigned.latitude,
+            assigned.longitude
+          );
+
+          if (distance > assigned.radius) {
+            message.error(
+              `不在打卡范围内（距离约${distance.toFixed(0)}米），无法登录`
+            );
+            return;
+          }
+
+          login(user);
+          message.success('登录成功');
           navigate('/user');
+        } catch (e: any) {
+          const msg =
+            e?.message || '获取当前位置失败，无法校验登录地点';
+          message.error(msg);
         }
       } else {
         message.error(response.message || '登录失败');
