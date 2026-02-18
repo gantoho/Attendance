@@ -12,7 +12,6 @@ pub fn run() {
     db.init_default_admin().expect("Failed to initialize default admin");
     
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(db))
         .invoke_handler(tauri::generate_handler![
             login,
