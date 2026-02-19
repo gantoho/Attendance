@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MobileLayout from '../components/MobileLayout';
+import ThemeToggle from '../components/ThemeToggle';
 import './UserDashboard.css';
 
 export default function UserDashboard() {
@@ -206,14 +207,17 @@ export default function UserDashboard() {
     <MobileLayout
       title="工作台"
       headerExtra={
-        <Button 
-          type="text" 
-          icon={<LogoutOutlined />} 
-          onClick={handleLogout}
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          退出
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ThemeToggle />
+          <Button 
+            type="text" 
+            icon={<LogoutOutlined />} 
+            onClick={handleLogout}
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            退出
+          </Button>
+        </div>
       }
     >
       <div className="user-info-bar">

@@ -26,6 +26,7 @@ import type { User, Location, AttendanceRecord } from '../types';
 import dayjs from 'dayjs';
 import MapSelector from '../components/MapSelector';
 import MobileLayout from '../components/MobileLayout';
+import ThemeToggle from '../components/ThemeToggle';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
@@ -41,9 +42,23 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [form] = Form.useForm();
   const [locationForm] = Form.useForm();
+  const [assignForm] = Form.useForm();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+
+  const getCurrentPosition = () =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('当前环境不支持定位'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    });
 
   useEffect(() => {
     if (user) {
@@ -55,9 +70,8 @@ export default function AdminDashboard() {
     if (!user) return;
     
     try {
-      // 无论当前在哪个菜单，如果 locations 为空，都加载一次 locations
-      // 这样可以确保在“用户管理”菜单下也能正确显示用户的打卡位置名称，以及在分配位置时有数据
-      if (locations.length === 0 || selectedMenu === 'locations') {
+      // 确保在“用户管理”与“考勤点管理”菜单下都加载位置数据
+      if (locations.length === 0 || selectedMenu === 'locations' || selectedMenu === 'users') {
         const locationData = await commands.getLocationsByAdmin(user.id);
         setLocations(locationData);
       }
@@ -173,6 +187,9 @@ export default function AdminDashboard() {
 
   const handleAssignLocation = (user: User) => {
     setSelectedUser(user);
+    assignForm.resetFields();
+    // 打开弹窗前设置回显
+    assignForm.setFieldsValue({ locationId: user.locationId });
     setAssignLocationModalVisible(true);
   };
 
@@ -251,9 +268,18 @@ export default function AdminDashboard() {
           <div className="admin-card">
             <div className="card-header">
               <h3>考勤点管理</h3>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+              <Button type="primary" icon={<PlusOutlined />} onClick={async () => {
                 setEditingLocation(null);
                 locationForm.resetFields();
+                try {
+                  const pos = await getCurrentPosition();
+                  const lat = pos.coords.latitude;
+                  const lng = pos.coords.longitude;
+                  setMapPosition([lat, lng]);
+                  locationForm.setFieldsValue({ latitude: lat, longitude: lng });
+                } catch {
+                  // 定位失败则保持默认北京坐标，用户可在地图上选择
+                }
                 setLocationModalVisible(true);
               }}>
                 添加
@@ -329,14 +355,17 @@ export default function AdminDashboard() {
     <MobileLayout
       title="管理后台"
       headerExtra={
-        <Button 
-          type="text" 
-          icon={<LogoutOutlined />} 
-          onClick={handleLogout}
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          退出
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ThemeToggle />
+          <Button 
+            type="text" 
+            icon={<LogoutOutlined />} 
+            onClick={handleLogout}
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            退出
+          </Button>
+        </div>
       }
       bottomNav={
         <div className="admin-bottom-nav">
@@ -404,30 +433,37 @@ export default function AdminDashboard() {
         }}
         onOk={() => locationForm.submit()}
         width={600}
+        styles={{ body: { maxHeight: '60vh', overflow: 'auto', paddingBottom: 16 } }}
+        className="location-modal"
         destroyOnHidden
       >
-        <Form form={locationForm} layout="vertical" onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}>
+        <Form
+          form={locationForm}
+          layout="vertical"
+          size="small"
+          onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}
+        >
           <Form.Item
             name="name"
             label="位置名称"
             rules={[{ required: true, message: '请输入位置名称' }]}
           >
-            <Input placeholder="例如：软件园办公区" />
+            <Input size="small" placeholder="例如：软件园办公区" />
           </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <Form.Item
               name="latitude"
               label="纬度"
               rules={[{ required: true, message: '请在地图上选择位置' }]}
             >
-              <InputNumber style={{ width: '100%' }} readOnly />
+              <InputNumber size="small" style={{ width: '100%' }} readOnly />
             </Form.Item>
             <Form.Item
               name="longitude"
               label="经度"
               rules={[{ required: true, message: '请在地图上选择位置' }]}
             >
-              <InputNumber style={{ width: '100%' }} readOnly />
+              <InputNumber size="small" style={{ width: '100%' }} readOnly />
             </Form.Item>
           </div>
           <Form.Item
@@ -436,10 +472,10 @@ export default function AdminDashboard() {
             initialValue={200}
             rules={[{ required: true, message: '请输入半径' }]}
           >
-            <InputNumber style={{ width: '100%' }} min={50} max={5000} />
+            <InputNumber size="small" style={{ width: '100%' }} min={50} max={5000} />
           </Form.Item>
           
-          <div style={{ height: '300px', marginBottom: '24px' }}>
+          <div style={{ marginBottom: '8px', position: 'relative', zIndex: 1 }}>
             <label style={{ display: 'block', marginBottom: '8px' }}>选择位置:</label>
             <MapSelector 
               center={mapPosition} 
@@ -454,14 +490,18 @@ export default function AdminDashboard() {
       <Modal
         title="分配打卡位置"
         open={assignLocationModalVisible}
-        onCancel={() => setAssignLocationModalVisible(false)}
-        onOk={() => {
-          const locationId = locationForm.getFieldValue('locationId');
-          handleAssignLocationSubmit({ locationId });
+        onCancel={() => {
+          setAssignLocationModalVisible(false);
+          assignForm.resetFields();
         }}
+        onOk={() => assignForm.submit()}
         destroyOnHidden
       >
-        <Form form={locationForm} layout="vertical">
+        <Form
+          form={assignForm}
+          layout="vertical"
+          onFinish={handleAssignLocationSubmit}
+        >
           <p>正在为员工 <strong>{selectedUser?.username}</strong> 分配打卡位置</p>
           <Form.Item
             name="locationId"

@@ -5,6 +5,39 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Write-Host "检查 Java 环境..." -ForegroundColor Green
+$javaReady = $false
+if (-not $env:JAVA_HOME -or -not (Test-Path "$env:JAVA_HOME\bin\java.exe")) {
+    $defaultJbr = "D:\AppPath\Android\Android Studio\jbr"
+    if (Test-Path "$defaultJbr\bin\java.exe") {
+        $env:JAVA_HOME = $defaultJbr
+    }
+}
+if (Test-Path "$env:JAVA_HOME\bin\java.exe") {
+    if (-not ($env:Path -split ";" | Where-Object { $_ -eq "$env:JAVA_HOME\bin" })) {
+        $env:Path = "$($env:JAVA_HOME)\bin;$env:Path"
+    }
+    $javaReady = $true
+}
+if (-not $javaReady) {
+    Write-Host "✗ 未检测到可用的 Java 17。请安装 JDK17 或安装 Android Studio 并重试。" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✓ Java 已就绪: $env:JAVA_HOME" -ForegroundColor Green
+
+Write-Host "检查 ANDROID_SDK_ROOT..." -ForegroundColor Green
+if (-not $env:ANDROID_SDK_ROOT) {
+    $defaultSdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
+    if (Test-Path $defaultSdk) {
+        $env:ANDROID_SDK_ROOT = $defaultSdk
+    }
+}
+if (-not $env:ANDROID_SDK_ROOT -or -not (Test-Path $env:ANDROID_SDK_ROOT)) {
+    Write-Host "✗ 未检测到 ANDROID_SDK_ROOT。请安装 Android SDK（建议通过 Android Studio 安装）。" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✓ Android SDK: $env:ANDROID_SDK_ROOT" -ForegroundColor Green
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Android APK 构建脚本" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan

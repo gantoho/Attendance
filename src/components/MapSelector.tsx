@@ -182,7 +182,7 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
     <div style={{ position: 'relative' }}>
       <div 
         ref={mapRef} 
-        style={{ height: '400px', width: '100%', borderRadius: '8px', overflow: 'hidden' }} 
+        style={{ height: '240px', width: '100%', borderRadius: '8px', overflow: 'hidden' }} 
         className="map-selector"
       />
       <div style={{ 
@@ -224,15 +224,19 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
         position: 'absolute', 
         bottom: '10px', 
         left: '10px', 
-        background: 'rgba(255,255,255,0.9)', 
-        padding: '8px 12px', 
-        borderRadius: '4px', 
+        background: 'var(--card-bg)',
+        border: '1px solid var(--glass-border)',
+        padding: '8px 12px',
+        borderRadius: '8px',
         fontSize: '12px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        color: 'var(--text-main)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: 'var(--shadow-sm)',
         zIndex: 1000
       }}>
-        <div>点击地图选择位置</div>
-        <div style={{ color: '#666', marginTop: '4px' }}>
+        <div style={{ fontWeight: 600 }}>点击地图选择位置</div>
+        <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
           当前: {position[0].toFixed(6)}, {position[1].toFixed(6)}
         </div>
       </div>

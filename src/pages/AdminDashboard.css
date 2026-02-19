@@ -64,16 +64,16 @@
 .admin-list-item {
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--card-bg);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   transition: all 0.2s ease;
 }
 
 .admin-list-item:hover {
-  background: white;
+  background: var(--card-bg);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .list-item-title {
@@ -97,7 +97,7 @@
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--glass-border);
 }
 
 .list-item-actions .ant-btn {
@@ -111,7 +111,15 @@
 /* 打卡记录列表样式 */
 .record-list-item {
   padding: var(--spacing-md) 0;
-  border-bottom: 1px solid #f0f0f2;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* 暗色细节优化 */
+:root.theme-dark .admin-list-item:hover {
+  box-shadow: var(--shadow-md);
+}
+:root.theme-dark .record-list-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .record-main {
@@ -150,4 +158,26 @@
     padding: 20px 16px;
     border-radius: 16px;
   }
+}
+
+/* 位置弹窗表单紧凑样式 */
+.location-modal .ant-form-item {
+  margin-bottom: 10px;
+}
+.location-modal .ant-form-item-label > label {
+  font-size: 12px;
+}
+.location-modal .ant-input,
+.location-modal .ant-input-affix-wrapper,
+.location-modal .ant-select-selector {
+  min-height: 32px;
+  border-radius: 10px;
+  padding: 4px 10px;
+}
+.location-modal .ant-input-number {
+  width: 100%;
+}
+.location-modal .ant-input-number .ant-input-number-input {
+  height: 32px;
+  padding: 4px 10px;
 }

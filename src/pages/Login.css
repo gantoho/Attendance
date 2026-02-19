@@ -82,3 +82,26 @@
 .login-tips p {
   margin: 0;
 }
+
+:root.theme-dark .login-container {
+  background: linear-gradient(180deg, #141414 0%, #1a1a1a 100%);
+}
+
+:root.theme-dark .login-card {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+:root.theme-dark .login-form .ant-input-affix-wrapper {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+:root.theme-dark .login-form .ant-input-affix-wrapper:hover,
+:root.theme-dark .login-form .ant-input-affix-wrapper-focused {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary-color);
+}
+
+:root.theme-dark .login-tips {
+  background: rgba(255, 255, 255, 0.06);
+}

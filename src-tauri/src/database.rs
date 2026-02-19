@@ -21,6 +21,12 @@ impl Database {
         if let Some(p) = dirs::data_local_dir() {
             candidates.push(p.join("attendance"));
         }
+        #[cfg(target_os = "android")]
+        {
+            let pkg = "me.ganto.app";
+            candidates.push(PathBuf::from(format!("/data/user/0/{}/files/attendance", pkg)));
+            candidates.push(PathBuf::from(format!("/data/data/{}/files/attendance", pkg)));
+        }
         if let Ok(cwd) = std::env::current_dir() {
             candidates.push(cwd.join(".data").join("attendance"));
         }
@@ -47,7 +53,16 @@ impl Database {
             }
         }
 
-        Err(last_err.unwrap_or_else(|| "Failed to initialize database".into()))
+        match sled::Config::new().temporary(true).open() {
+            Ok(db_raw) => {
+                let db = Arc::new(db_raw);
+                let users = Arc::new(db.open_tree("users")?);
+                let locations = Arc::new(db.open_tree("locations")?);
+                let records = Arc::new(db.open_tree("records")?);
+                Ok(Self { db, users, locations, records })
+            }
+            Err(_) => Err(last_err.unwrap_or_else(|| "Failed to initialize database".into())),
+        }
     }
     
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {

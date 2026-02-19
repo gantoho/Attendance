@@ -35,6 +35,23 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+:root.theme-dark {
+  --primary-color: #1677ff;
+  --primary-light: rgba(22, 119, 255, 0.15);
+  --success-color: #49aa19;
+  --warning-color: #fa8c16;
+  --error-color: #ff4d4f;
+  --bg-color: #141414;
+  --card-bg: rgba(24, 24, 24, 0.9);
+  --text-main: #e8e8e8;
+  --text-secondary: #8c8c8c;
+  --glass-bg: rgba(20, 20, 20, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
+
 body {
   margin: 0;
   padding: 0;

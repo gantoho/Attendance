@@ -1,11 +1,11 @@
 .user-info-bar {
   display: flex;
   align-items: center;
-  background: white;
+  background: var(--card-bg);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-md);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .user-avatar {
@@ -182,7 +182,7 @@
   align-items: flex-start;
   gap: var(--spacing-md);
   padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid #f0f0f2;
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .record-item:last-child {
@@ -225,4 +225,16 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* 暗色主题细节覆盖 */
+:root.theme-dark .check-in-button.disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+:root.theme-dark .user-info-bar {
+  box-shadow: var(--shadow-sm);
+}
+:root.theme-dark .record-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }

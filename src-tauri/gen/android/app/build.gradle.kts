@@ -13,6 +13,16 @@ val tauriProperties = Properties().apply {
     }
 }
 
+val signingProperties = Properties().apply {
+    val keyProp = rootProject.file("key.properties")
+    if (keyProp.exists()) {
+        keyProp.inputStream().use { load(it) }
+    }
+}
+fun envOrProp(key: String): String? =
+    System.getenv(key) ?: signingProperties.getProperty(key)
+val hasSigning = (envOrProp("storeFile") ?: "").isNotBlank()
+
 android {
     compileSdk = 36
     namespace = "me.ganto.app"
@@ -23,6 +33,19 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    if (hasSigning) {
+        signingConfigs {
+            create("release") {
+                val storeFilePath = envOrProp("storeFile")
+                if (!storeFilePath.isNullOrBlank()) {
+                    storeFile = file(storeFilePath)
+                }
+                storePassword = envOrProp("storePassword")
+                keyAlias = envOrProp("keyAlias")
+                keyPassword = envOrProp("keyPassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -43,6 +66,17 @@ android {
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
                     .toList().toTypedArray()
             )
+            if (hasSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = true
         }
     }
     kotlinOptions {
@@ -51,6 +85,25 @@ android {
     buildFeatures {
         buildConfig = true
     }
+}
+
+// 统一 Debug 分包 APK 文件名，匹配 app-<abi>-debug.apk，便于外部工具（如 tauri-cli）查找
+// 通过构建后处理，复制生成的 APK 到 tauri-cli 期望的命名
+tasks.register("renameX86_64DebugApk") {
+    doLast {
+        val dir = file("$buildDir/outputs/apk/x86_64/debug")
+        if (dir.exists()) {
+            val src = dir.listFiles()?.firstOrNull { it.name.matches(Regex("app-.*-x86_64-debug\\.apk")) }
+            if (src != null) {
+                val dst = file("$buildDir/outputs/apk/x86_64/debug/app-x86_64-debug.apk")
+                src.copyTo(dst, overwrite = true)
+                println("Renamed ${src.name} -> ${dst.name}")
+            }
+        }
+    }
+}
+tasks.matching { it.name == "assembleX86_64Debug" }.configureEach {
+    finalizedBy("renameX86_64DebugApk")
 }
 
 rust {
