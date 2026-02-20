@@ -19,7 +19,7 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
-import { commands } from '../api/tauri';
+import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import type { User, Location, AttendanceRecord } from '../types';

@@ -20,6 +20,8 @@ function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode; 
 }
 
 function App() {
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -39,7 +41,14 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/"
+        element={
+          isAuthenticated && user
+            ? <Navigate to={`/${user.role}`} replace />
+            : <Navigate to="/login" replace />
+        }
+      />
     </Routes>
   );
 }

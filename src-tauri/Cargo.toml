@@ -26,3 +26,9 @@ uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 sled = "0.34"
 dirs = "5"
+axum = { version = "0.7", features = ["macros", "json"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+[[bin]]
+name = "attendance-server"
+path = "src/server_main.rs"

@@ -23,12 +23,9 @@ impl Database {
         }
         #[cfg(target_os = "android")]
         {
-            let pkg = "me.ganto.app";
+            let pkg = "me.ganto.attendance";
             candidates.push(PathBuf::from(format!("/data/user/0/{}/files/attendance", pkg)));
             candidates.push(PathBuf::from(format!("/data/data/{}/files/attendance", pkg)));
-        }
-        if let Ok(cwd) = std::env::current_dir() {
-            candidates.push(cwd.join(".data").join("attendance"));
         }
 
         let mut last_err: Option<Box<dyn std::error::Error>> = None;
@@ -44,6 +41,7 @@ impl Database {
                     let users = Arc::new(db.open_tree("users")?);
                     let locations = Arc::new(db.open_tree("locations")?);
                     let records = Arc::new(db.open_tree("records")?);
+                    println!("Using database path: {}", db_path.display());
                     return Ok(Self { db, users, locations, records });
                 }
                 Err(e) => {
@@ -53,16 +51,7 @@ impl Database {
             }
         }
 
-        match sled::Config::new().temporary(true).open() {
-            Ok(db_raw) => {
-                let db = Arc::new(db_raw);
-                let users = Arc::new(db.open_tree("users")?);
-                let locations = Arc::new(db.open_tree("locations")?);
-                let records = Arc::new(db.open_tree("records")?);
-                Ok(Self { db, users, locations, records })
-            }
-            Err(_) => Err(last_err.unwrap_or_else(|| "Failed to initialize database".into())),
-        }
+        Err(last_err.unwrap_or_else(|| "Failed to initialize database".into()))
     }
     
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -114,6 +103,7 @@ impl Database {
         let key = user.id.as_bytes();
         let value = serde_json::to_vec(user)?;
         self.users.insert(key, value)?;
+        self.db.flush()?;
         Ok(())
     }
     
@@ -149,6 +139,7 @@ impl Database {
     
     pub fn delete_user(&self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.users.remove(id.as_bytes())?;
+        self.db.flush()?;
         Ok(())
     }
     
@@ -156,6 +147,7 @@ impl Database {
         let key = location.id.as_bytes();
         let value = serde_json::to_vec(location)?;
         self.locations.insert(key, value)?;
+        self.db.flush()?;
         Ok(())
     }
     
@@ -180,6 +172,7 @@ impl Database {
     
     pub fn delete_location(&self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.locations.remove(id.as_bytes())?;
+        self.db.flush()?;
         Ok(())
     }
     
@@ -187,6 +180,7 @@ impl Database {
         let key = record.id.as_bytes();
         let value = serde_json::to_vec(record)?;
         self.records.insert(key, value)?;
+        self.db.flush()?;
         Ok(())
     }
     

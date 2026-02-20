@@ -25,10 +25,10 @@ val hasSigning = (envOrProp("storeFile") ?: "").isNotBlank()
 
 android {
     compileSdk = 36
-    namespace = "me.ganto.app"
+    namespace = "me.ganto.attendance"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "me.ganto.app"
+        applicationId = "me.ganto.attendance"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

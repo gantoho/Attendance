@@ -1,4 +1,4 @@
-package me.ganto.app
+package me.ganto.attendance
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
