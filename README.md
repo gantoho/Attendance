@@ -12,3 +12,6 @@ pnpm tauri dev
 pnpm tauri build
 pnpm android:dev
 pnpm android:build
+
+cd src-tauri
+cargo run --bin attendance-server --features server
