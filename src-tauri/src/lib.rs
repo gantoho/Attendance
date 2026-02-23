@@ -1,3 +1,4 @@
+#![cfg(feature = "desktop")]
 mod models;
 mod database;
 mod commands;
@@ -8,6 +9,9 @@ use std::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if std::env::var("ATTENDANCE_NAMESPACE").is_err() {
+        std::env::set_var("ATTENDANCE_NAMESPACE", "app");
+    }
     let db = Database::new().expect("Failed to initialize database");
     db.init_default_admin().expect("Failed to initialize default admin");
     

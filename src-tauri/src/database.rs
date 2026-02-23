@@ -15,17 +15,21 @@ pub struct Database {
 impl Database {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let mut candidates: Vec<PathBuf> = Vec::new();
+        let base_name = match std::env::var("ATTENDANCE_NAMESPACE") {
+            Ok(ns) if !ns.trim().is_empty() => format!("attendance-{}", ns.trim()),
+            _ => "attendance".to_string(),
+        };
         if let Ok(p) = std::env::var("ATTENDANCE_DATA_DIR") {
             candidates.push(PathBuf::from(p));
         }
         if let Some(p) = dirs::data_local_dir() {
-            candidates.push(p.join("attendance"));
+            candidates.push(p.join(&base_name));
         }
         #[cfg(target_os = "android")]
         {
             let pkg = "me.ganto.attendance";
-            candidates.push(PathBuf::from(format!("/data/user/0/{}/files/attendance", pkg)));
-            candidates.push(PathBuf::from(format!("/data/data/{}/files/attendance", pkg)));
+            candidates.push(PathBuf::from(format!("/data/user/0/{}/files/{}", pkg, base_name)));
+            candidates.push(PathBuf::from(format!("/data/data/{}/files/{}", pkg, base_name)));
         }
 
         let mut last_err: Option<Box<dyn std::error::Error>> = None;
@@ -55,17 +59,20 @@ impl Database {
     }
     
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let admin_exists = self.get_user_by_username("admin")?;
+        // 支持通过环境变量配置默认管理员
+        let default_username = std::env::var("DEFAULT_ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_string());
+        let default_password = std::env::var("DEFAULT_ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+        let admin_exists = self.get_user_by_username(&default_username)?;
         
         if admin_exists.is_none() {
             let admin = User::new(
-                "admin".to_string(),
-                "admin123".to_string(),
+                default_username.clone(),
+                default_password.clone(),
                 crate::models::UserRole::Admin,
                 None,
             );
             self.save_user(&admin)?;
-            println!("Default admin user created");
+            println!("Default admin user created: {}", default_username);
         } else {
             println!("Admin user already exists");
         }

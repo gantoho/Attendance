@@ -18,6 +18,9 @@ type AppState = Arc<Mutex<Database>>;
 
 #[tokio::main]
 async fn main() {
+    if std::env::var("ATTENDANCE_NAMESPACE").is_err() && std::env::var("ATTENDANCE_DATA_DIR").is_err() {
+        std::env::set_var("ATTENDANCE_NAMESPACE", "server");
+    }
     let db = Database::new().expect("Failed to init database");
     db.init_default_admin().expect("Failed to init admin");
     let state: AppState = Arc::new(Mutex::new(db));
@@ -28,6 +31,7 @@ async fn main() {
         .allow_headers(Any);
 
     let app = Router::new()
+        .route("/health", get(health))
         .route("/login", post(login))
         .route("/users", get(get_users).post(create_user))
         .route("/users/:id", delete(delete_user))
@@ -49,6 +53,10 @@ async fn main() {
     axum::serve(tokio::net::TcpListener::bind(bind).await.unwrap(), app)
         .await
         .unwrap();
+}
+
+async fn health() -> impl IntoResponse {
+    (StatusCode::OK, Json(serde_json::json!({"status": "ok"})))
 }
 
 async fn login(
@@ -287,4 +295,3 @@ fn calculate_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
     R * c
 }
-
