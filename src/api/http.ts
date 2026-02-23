@@ -15,12 +15,42 @@ function getBaseUrl() {
   return fromEnv || fromStorage || '';
 }
 
+function normalizeBaseUrl(raw: string): string {
+  if (!raw) return raw;
+  let input = raw.trim();
+  if (!/^https?:\/\//i.test(input)) {
+    input = `http://${input}`;
+  }
+  const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+  const emulatorGateway = localStorage.getItem('emulator_gateway') || '10.0.2.2';
+  try {
+    const u = new URL(input);
+    const isLocal =
+      u.hostname === 'localhost' ||
+      u.hostname === '127.0.0.1' ||
+      u.hostname === '::1';
+    const isAndroid = /Android/i.test(ua);
+    if (isAndroid && isLocal) {
+      u.hostname = emulatorGateway;
+      return u.toString().replace(/\/+$/, '');
+    }
+    return u.toString().replace(/\/+$/, '');
+  } catch {
+    // Fallback: simple regex replace
+    if (/Android/i.test(ua) && /(localhost|127\.0\.0\.1)/i.test(input)) {
+      return input.replace(/localhost|127\.0\.0\.1/i, emulatorGateway).replace(/\/+$/, '');
+    }
+    return input.replace(/\/+$/, '');
+  }
+}
+
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
-  const base = getBaseUrl();
+  const base = normalizeBaseUrl(getBaseUrl());
   if (!base) throw new Error('SERVER_BASE_URL 未配置');
   const res = await fetch(`${base}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     ...options,
   });

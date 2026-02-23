@@ -64,15 +64,58 @@ export default function Login() {
       message.warning('请输入服务器地址');
       return;
     }
-    const base = serverUrl.replace(/\/+$/, '');
+    const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+    const emulatorGateway = localStorage.getItem('emulator_gateway') || '10.0.2.2';
+    const normalize = (raw: string) => {
+      const trimmed = raw.trim().replace(/\/+$/, '');
+      const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+      try {
+        const u = new URL(withProto);
+        const isLocal = ['localhost', '127.0.0.1', '::1'].includes(u.hostname);
+        const isAndroid = /Android/i.test(ua);
+        if (isAndroid && isLocal) {
+          u.hostname = emulatorGateway;
+          return u.toString().replace(/\/+$/, '');
+        }
+        return u.toString().replace(/\/+$/, '');
+      } catch {
+        if (/Android/i.test(ua) && /(localhost|127\.0\.0\.1)/i.test(withProto)) {
+          return withProto.replace(/localhost|127\.0\.0\.1/i, emulatorGateway).replace(/\/+$/, '');
+        }
+        return withProto;
+      }
+    };
+    const base = normalize(serverUrl);
+    const target = (() => {
+      try {
+        const u = new URL(base);
+        const p = u.pathname || '/';
+        if (p === '/' || p === '') {
+          return `${base}/health`;
+        }
+        if (/\/health\/?$/i.test(p)) {
+          return base;
+        }
+        return `${base}/health`;
+      } catch {
+        return /\/health\/?$/i.test(base) ? base : `${base}/health`;
+      }
+    })();
     try {
-      const res = await fetch(`${base}/users`, { method: 'GET' });
+      const res = await fetch(target, { method: 'GET' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await res.json();
-      message.success('连通性正常');
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      message.success(`连通性正常：${data?.status || 'ok'}`);
+    } catch (e: any) {
       console.error(e);
-      message.error('无法连接到服务器，请检查地址或服务是否已启动');
+      const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+      const isAndroid = /Android/i.test(ua);
+      const tipForEmulator =
+        isAndroid && /^(http:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)
+          ? '（安卓模拟器请使用 http://10.0.2.2:端口 访问您电脑上的后端）'
+          : '';
+      const reason = e?.message ? `；原因：${e.message}` : '';
+      message.error(`无法连接到服务器，请检查地址或服务是否已启动${reason} ${tipForEmulator}`.trim());
     }
   };
 
