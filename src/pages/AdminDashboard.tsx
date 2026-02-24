@@ -28,6 +28,7 @@ import MapSelector from '../components/MapSelector';
 import MobileLayout from '../components/MobileLayout';
 import ThemeToggle from '../components/ThemeToggle';
 import './AdminDashboard.css';
+import { getPrecisePosition } from '../utils/geolocation';
 
 export default function AdminDashboard() {
   const [selectedMenu, setSelectedMenu] = useState('users');
@@ -47,18 +48,10 @@ export default function AdminDashboard() {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
-  const getCurrentPosition = () =>
-    new Promise<GeolocationPosition>((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('当前环境不支持定位'));
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(pos),
-        (err) => reject(err),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-      );
-    });
+  const getCurrentPosition = async () => {
+    const p = await getPrecisePosition({ minSamples: 2, maxSamples: 6, desiredAccuracy: 25, timeoutMs: 15000 });
+    return p;
+  };
 
   useEffect(() => {
     if (user) {
@@ -273,8 +266,8 @@ export default function AdminDashboard() {
                 locationForm.resetFields();
                 try {
                   const pos = await getCurrentPosition();
-                  const lat = pos.coords.latitude;
-                  const lng = pos.coords.longitude;
+                  const lat = pos.latitude;
+                  const lng = pos.longitude;
                   setMapPosition([lat, lng]);
                   locationForm.setFieldsValue({ latitude: lat, longitude: lng });
                 } catch {

@@ -122,7 +122,7 @@ export default function Login() {
   return (
     <div className="login-container">
       <div className="login-header">
-        <h1>考勤打卡</h1>
+        <h1>Attendance</h1>
         <p>欢迎回来，请登录您的账号</p>
         <Button size="small" type="link" onClick={onOpenServer}>
           服务器设置

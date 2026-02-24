@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { message, Button } from 'antd';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { getPrecisePosition } from '../utils/geolocation';
+import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coord';
 
 interface MapSelectorProps {
   center?: [number, number];
@@ -12,34 +14,15 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const accuracyCircleRef = useRef<L.Circle | null>(null);
   const [position, setPosition] = useState<[number, number]>(center || [39.9042, 116.4074]);
   const [zoom, setZoom] = useState(16);
   const [isLocating, setIsLocating] = useState(false);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
 
-  const getCurrentPosition = (): Promise<[number, number]> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('浏览器不支持地理位置'));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          console.log('获取到当前位置:', latitude, longitude);
-          resolve([latitude, longitude]);
-        },
-        (err) => {
-          console.error('获取位置失败:', err);
-          reject(err);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
-    });
+  const getCurrentPosition = async (): Promise<{ lat: number; lng: number; acc: number }> => {
+    const p = await getPrecisePosition({ minSamples: 2, maxSamples: 6, desiredAccuracy: 25, timeoutMs: 15000 });
+    return { lat: p.latitude, lng: p.longitude, acc: p.accuracy };
   };
 
   useEffect(() => {
@@ -57,8 +40,10 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
         if (!center) {
           setIsLocating(true);
           try {
-            initPosition = await getCurrentPosition();
+            const pos = await getCurrentPosition();
+            initPosition = [pos.lat, pos.lng];
             setPosition(initPosition);
+            setAccuracy(pos.acc);
             onChange(initPosition[0], initPosition[1]);
             message.success('已定位到当前位置');
           } catch (error) {
@@ -69,8 +54,9 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
           }
         }
 
+        const gcjCenter = wgs84ToGcj02(initPosition[0], initPosition[1]);
         const map = L.map(mapRef.current, {
-          center: initPosition,
+          center: gcjCenter,
           zoom: zoom,
           zoomControl: false,
         });
@@ -90,18 +76,34 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
           iconAnchor: [12, 12],
         });
 
-        const marker = L.marker(initPosition, { icon }).addTo(map);
+        const marker = L.marker(gcjCenter, { icon }).addTo(map);
 
         markerRef.current = marker;
+        if (accuracy && Number.isFinite(accuracy)) {
+          accuracyCircleRef.current = L.circle(gcjCenter, {
+            radius: Math.max(accuracy, 5),
+            color: '#ff4444',
+            fillColor: '#ff4444',
+            fillOpacity: 0.08,
+            weight: 1,
+            dashArray: '4,4',
+          }).addTo(map);
+        }
 
         map.on('click', (e: any) => {
-          const newPos: [number, number] = [e.latlng.lat, e.latlng.lng];
+          // treat clicked latlng as GCJ-02 for Amap tiles, convert back to WGS84 for storage
+          const gcjPos: [number, number] = [e.latlng.lat, e.latlng.lng];
+          const wgsPos = gcj02ToWgs84(gcjPos[0], gcjPos[1]);
+          const newPos: [number, number] = [gcjPos[0], gcjPos[1]];
           console.log('地图点击:', newPos);
-          setPosition(newPos);
-          onChange(newPos[0], newPos[1]);
+          setPosition([wgsPos[0], wgsPos[1]]);
+          onChange(wgsPos[0], wgsPos[1]);
           
           if (markerRef.current) {
             markerRef.current.setLatLng(newPos);
+          }
+          if (accuracyCircleRef.current) {
+            accuracyCircleRef.current.setLatLng(newPos);
           }
         });
 
@@ -125,10 +127,11 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
   useEffect(() => {
     if (center && mapInstanceRef.current) {
       console.log('更新地图中心:', center);
+      const gcj = wgs84ToGcj02(center[0], center[1]);
       setPosition(center);
-      mapInstanceRef.current.setView(center, zoom);
+      mapInstanceRef.current.setView(gcj, zoom);
       if (markerRef.current) {
-        markerRef.current.setLatLng(center);
+        markerRef.current.setLatLng(gcj);
       }
     }
   }, [center]);
@@ -155,19 +158,38 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
     setIsLocating(true);
     try {
       const currentPos = await getCurrentPosition();
-      console.log('定位到当前位置:', currentPos);
+      console.log('定位到当前位置:', [currentPos.lat, currentPos.lng], 'acc', currentPos.acc);
       
-      setPosition(currentPos);
+      setPosition([currentPos.lat, currentPos.lng]);
+      setAccuracy(currentPos.acc);
       
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.setView(currentPos, 16);
+        const gcj = wgs84ToGcj02(currentPos.lat, currentPos.lng);
+        mapInstanceRef.current.setView(gcj, 16);
       }
       
       if (markerRef.current) {
-        markerRef.current.setLatLng(currentPos);
+        const gcj = wgs84ToGcj02(currentPos.lat, currentPos.lng);
+        markerRef.current.setLatLng(gcj);
+      }
+      if (mapInstanceRef.current) {
+        const gcj = wgs84ToGcj02(currentPos.lat, currentPos.lng);
+        if (accuracyCircleRef.current) {
+          accuracyCircleRef.current.setLatLng(gcj);
+          accuracyCircleRef.current.setRadius(Math.max(currentPos.acc, 5));
+        } else {
+          accuracyCircleRef.current = L.circle(gcj, {
+            radius: Math.max(currentPos.acc, 5),
+            color: '#ff4444',
+            fillColor: '#ff4444',
+            fillOpacity: 0.08,
+            weight: 1,
+            dashArray: '4,4',
+          }).addTo(mapInstanceRef.current);
+        }
       }
       
-      onChange(currentPos[0], currentPos[1]);
+      onChange(currentPos.lat, currentPos.lng);
       
       message.success('已定位到当前位置');
     } catch (error) {
@@ -239,6 +261,11 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
         <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
           当前: {position[0].toFixed(6)}, {position[1].toFixed(6)}
         </div>
+        {accuracy !== null && (
+          <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
+            精度: {Math.round(accuracy)} 米
+          </div>
+        )}
       </div>
     </div>
   );

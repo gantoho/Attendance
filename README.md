@@ -15,3 +15,5 @@ pnpm android:build
 
 cd src-tauri
 cargo run --bin attendance-server --features server
+
+rustup target add x86_64-unknown-linux-musl

@@ -11,6 +11,8 @@ import 'leaflet/dist/leaflet.css';
 import MobileLayout from '../components/MobileLayout';
 import ThemeToggle from '../components/ThemeToggle';
 import './UserDashboard.css';
+import { getPrecisePosition } from '../utils/geolocation';
+import { wgs84ToGcj02, haversine } from '../utils/coord';
 
 export default function UserDashboard() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -20,6 +22,8 @@ export default function UserDashboard() {
   const [assignedLocation, setAssignedLocation] = useState<Location | null>(null);
   const [map, setMap] = useState<L.Map | null>(null);
   const [currentMarker, setCurrentMarker] = useState<L.Marker | null>(null);
+  const [accuracyCircle, setAccuracyCircle] = useState<L.Circle | null>(null);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -62,8 +66,11 @@ export default function UserDashboard() {
     const mapElement = document.getElementById('user-map');
     if (!mapElement) return;
 
+    const currentGcj = wgs84ToGcj02(location.latitude, location.longitude);
+    const assignedGcj = wgs84ToGcj02(assignedLocation.latitude, assignedLocation.longitude);
+
     const mapInstance = L.map('user-map', {
-      center: [location.latitude, location.longitude],
+      center: [currentGcj[0], currentGcj[1]],
       zoom: 16,
       zoomControl: false,
     });
@@ -81,7 +88,7 @@ export default function UserDashboard() {
       iconAnchor: [10, 10],
     });
 
-    const currentMarkerInstance = L.marker([location.latitude, location.longitude], { icon: currentIcon })
+    const currentMarkerInstance = L.marker([currentGcj[0], currentGcj[1]], { icon: currentIcon })
       .addTo(mapInstance)
       .bindPopup('当前位置');
 
@@ -92,60 +99,70 @@ export default function UserDashboard() {
       iconAnchor: [12, 12],
     });
 
-    L.marker([assignedLocation.latitude, assignedLocation.longitude], { icon: locationIcon })
+    L.marker([assignedGcj[0], assignedGcj[1]], { icon: locationIcon })
       .addTo(mapInstance)
       .bindPopup(`打卡位置: ${assignedLocation.name}`);
 
-    L.circle([assignedLocation.latitude, assignedLocation.longitude], {
+    L.circle([assignedGcj[0], assignedGcj[1]], {
       radius: assignedLocation.radius,
       color: '#52c41a',
       fillColor: '#52c41a',
       fillOpacity: 0.2,
     }).addTo(mapInstance);
 
-    const bounds = L.latLngBounds([
-      [location.latitude, location.longitude],
-      [assignedLocation.latitude, assignedLocation.longitude],
-    ]);
+    if (locationAccuracy && Number.isFinite(locationAccuracy)) {
+      const accCircle = L.circle([currentGcj[0], currentGcj[1]], {
+        radius: Math.max(locationAccuracy, 5),
+        color: '#1890ff',
+        fillColor: '#1890ff',
+        fillOpacity: 0.1,
+        weight: 1,
+        dashArray: '4,4',
+      }).addTo(mapInstance);
+      setAccuracyCircle(accCircle);
+    }
+
+    const bounds = L.latLngBounds([[currentGcj[0], currentGcj[1]], [assignedGcj[0], assignedGcj[1]]]);
     mapInstance.fitBounds(bounds, { padding: [50, 50] });
 
     setMap(mapInstance);
     setCurrentMarker(currentMarkerInstance);
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     setLoading(true);
-    if (!navigator.geolocation) {
-      message.error('您的浏览器不支持地理位置功能');
-      setLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setLocation(newLocation);
-        
-        if (currentMarker) {
-          currentMarker.setLatLng([newLocation.latitude, newLocation.longitude]);
-        }
-        
-        setLoading(false);
-      },
-      (error) => {
-        message.error(`获取位置失败: ${error.message}`);
-        console.error(error);
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+    try {
+      const pos = await getPrecisePosition({ minSamples: 2, maxSamples: 6, desiredAccuracy: 25, timeoutMs: 15000 });
+      const newLocation = { latitude: pos.latitude, longitude: pos.longitude };
+      setLocationAccuracy(pos.accuracy);
+      setLocation(newLocation);
+      if (currentMarker) {
+        const gcj = wgs84ToGcj02(newLocation.latitude, newLocation.longitude);
+        currentMarker.setLatLng([gcj[0], gcj[1]]);
       }
-    );
+      if (map) {
+        const gcj = wgs84ToGcj02(newLocation.latitude, newLocation.longitude);
+        if (accuracyCircle) {
+          accuracyCircle.setLatLng([gcj[0], gcj[1]]);
+          accuracyCircle.setRadius(Math.max(pos.accuracy, 5));
+        } else {
+          const circle = L.circle([gcj[0], gcj[1]], {
+            radius: Math.max(pos.accuracy, 5),
+            color: '#1890ff',
+            fillColor: '#1890ff',
+            fillOpacity: 0.1,
+            weight: 1,
+            dashArray: '4,4',
+          }).addTo(map);
+          setAccuracyCircle(circle);
+        }
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || error || '获取位置失败';
+      message.error(`${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadRecords = async () => {
@@ -193,9 +210,7 @@ export default function UserDashboard() {
 
   const isWithinRange = () => {
     if (!location || !assignedLocation) return false;
-    const from = L.latLng(location.latitude, location.longitude);
-    const to = L.latLng(assignedLocation.latitude, assignedLocation.longitude);
-    const distance = from.distanceTo(to);
+    const distance = haversine(location.latitude, location.longitude, assignedLocation.latitude, assignedLocation.longitude);
     return distance <= assignedLocation.radius;
   };
 
@@ -242,6 +257,11 @@ export default function UserDashboard() {
         <>
           <div className="map-container-wrapper">
             <div id="user-map"></div>
+            {locationAccuracy !== null && (
+              <div style={{ position: 'absolute', left: 12, top: 12, background: 'var(--card-bg)', border: '1px solid var(--glass-border)', padding: '6px 10px', borderRadius: 8, fontSize: 12, color: 'var(--text-main)', zIndex: 1100 }}>
+                精度: {Math.round(locationAccuracy)} 米
+              </div>
+            )}
             {loading && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', zIndex: 1000 }}>
                 <Spin description="定位中..." />
@@ -276,6 +296,11 @@ export default function UserDashboard() {
               {!isWithinRange() && (
                 <div className="range-warning">
                   <CloseCircleOutlined /> 您不在打卡范围内
+                </div>
+              )}
+              {locationAccuracy !== null && locationAccuracy > 50 && (
+                <div className="range-warning" style={{ marginTop: 8 }}>
+                  <CloseCircleOutlined /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
                 </div>
               )}
             </div>
