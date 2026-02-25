@@ -33,6 +33,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/debug/dbpath", get(get_db_path))
+        .route("/debug/stats", get(get_stats))
         .route("/login", post(login))
         .route("/users", get(get_users).post(create_user))
         .route("/users/:id", delete(delete_user))
@@ -65,6 +66,14 @@ async fn get_db_path(
 ) -> impl IntoResponse {
     let db = state.lock().await;
     (StatusCode::OK, Json(serde_json::json!({"path": db.path()})))
+}
+
+async fn get_stats(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let db = state.lock().await;
+    let (users, locations, records) = db.stats();
+    (StatusCode::OK, Json(serde_json::json!({ "users": users, "locations": locations, "records": records })))
 }
 
 async fn login(

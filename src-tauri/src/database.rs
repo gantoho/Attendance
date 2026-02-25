@@ -63,6 +63,13 @@ impl Database {
         self.db_path.display().to_string()
     }
     
+    pub fn stats(&self) -> (usize, usize, usize) {
+        let users = self.get_all_users().map(|v| v.len()).unwrap_or(0);
+        let locations = self.get_all_locations().map(|v| v.len()).unwrap_or(0);
+        let records = self.get_all_records().map(|v| v.len()).unwrap_or(0);
+        (users, locations, records)
+    }
+    
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 支持通过环境变量配置默认管理员
         let default_username = std::env::var("DEFAULT_ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_string());
