@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { message, Button } from 'antd';
+import { message, Button, Spin } from 'antd';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getPrecisePosition } from '../utils/geolocation';
@@ -8,9 +8,13 @@ import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coord';
 interface MapSelectorProps {
   center?: [number, number];
   onChange: (lat: number, lng: number) => void;
+  lazyInit?: boolean;
+  onReady?: () => void;
+  overlayVisible?: boolean;
+  overlayText?: string;
 }
 
-export default function MapSelector({ center, onChange }: MapSelectorProps) {
+export default function MapSelector({ center, onChange, lazyInit, onReady, overlayVisible, overlayText }: MapSelectorProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -19,6 +23,7 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
   const [zoom, setZoom] = useState(16);
   const [isLocating, setIsLocating] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   const getCurrentPosition = async (): Promise<{ lat: number; lng: number; acc: number }> => {
     const p = await getPrecisePosition({ minSamples: 2, maxSamples: 6, desiredAccuracy: 25, timeoutMs: 15000 });
@@ -61,11 +66,17 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
           zoomControl: false,
         });
 
-        L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+        const tile = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
           attribution: '&copy; 高德地图',
           maxZoom: 18,
           minZoom: 3,
         }).addTo(map);
+        tile.on('load', () => {
+          if (!isReady) {
+            setIsReady(true);
+            try { onReady && onReady(); } catch {}
+          }
+        });
 
         mapInstanceRef.current = map;
 
@@ -114,15 +125,25 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
       }
     };
 
-    initMap();
+    let timer: number | undefined;
+    if (lazyInit) {
+      timer = window.setTimeout(() => {
+        initMap();
+      }, 50);
+    } else {
+      initMap();
+    }
 
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
     };
-  }, []);
+  }, [lazyInit]);
 
   useEffect(() => {
     if (center && mapInstanceRef.current) {
@@ -207,6 +228,26 @@ export default function MapSelector({ center, onChange }: MapSelectorProps) {
         style={{ height: '240px', width: '100%', borderRadius: '8px', overflow: 'hidden' }} 
         className="map-selector"
       />
+      {(!isReady || overlayVisible) && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(255,255,255,0.65)',
+            color: 'var(--text-secondary)',
+            fontSize: 12,
+            pointerEvents: 'none',
+            zIndex: 1100,
+          }}
+        >
+          <div style={{ pointerEvents: 'none' }}>
+            <Spin tip={overlayText || '地图加载中…'} />
+          </div>
+        </div>
+      )}
       <div style={{ 
         position: 'absolute', 
         top: '10px', 
