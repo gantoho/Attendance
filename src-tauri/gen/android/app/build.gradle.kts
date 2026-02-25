@@ -60,6 +60,8 @@ android {
             }
         }
         getByName("release") {
+            // 允许明文 HTTP（连接外部 http://<host>:<port> 服务）
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
