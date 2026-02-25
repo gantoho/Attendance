@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, message, Spin, Result } from 'antd';
-import { EnvironmentOutlined, CheckCircleOutlined, CloseCircleOutlined, LogoutOutlined, HistoryOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, CheckCircleOutlined, CloseCircleOutlined, LogoutOutlined, HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -262,6 +262,16 @@ export default function UserDashboard() {
                 精度: {Math.round(locationAccuracy)} 米
               </div>
             )}
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
+              onClick={getCurrentLocation}
+              loading={loading}
+              style={{ position: 'absolute', right: 12, top: 12, zIndex: 1100, borderRadius: 8 }}
+              title="重新定位"
+            >
+              刷新定位
+            </Button>
             {loading && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', zIndex: 1000 }}>
                 <Spin description="定位中..." />
