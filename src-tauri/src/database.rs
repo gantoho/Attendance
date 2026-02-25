@@ -10,6 +10,7 @@ pub struct Database {
     users: Arc<Tree>,
     locations: Arc<Tree>,
     records: Arc<Tree>,
+    db_path: PathBuf,
 }
 
 impl Database {
@@ -46,7 +47,7 @@ impl Database {
                     let locations = Arc::new(db.open_tree("locations")?);
                     let records = Arc::new(db.open_tree("records")?);
                     println!("Using database path: {}", db_path.display());
-                    return Ok(Self { db, users, locations, records });
+                    return Ok(Self { db, users, locations, records, db_path });
                 }
                 Err(e) => {
                     last_err = Some(Box::new(e));
@@ -56,6 +57,10 @@ impl Database {
         }
 
         Err(last_err.unwrap_or_else(|| "Failed to initialize database".into()))
+    }
+    
+    pub fn path(&self) -> String {
+        self.db_path.display().to_string()
     }
     
     pub fn init_default_admin(&self) -> Result<(), Box<dyn std::error::Error>> {
