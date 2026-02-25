@@ -6,21 +6,31 @@ This template should help get you started developing with Tauri, React and Types
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
+
+## 设置目标
+rustup target add x86_64-unknown-linux-musl  
+
+## 打包后端服务
 cargo build -p attendance --bin attendance-server --release --target x86_64-unknown-linux-musl --no-default-features --features server
 
-开发人员模式 开启  
+## Web
+pnpm dev
+pnpm build
 
+Desktop开发服务器需要开启 开发人员模式
+## Desktop
 pnpm tauri dev  
-pnpm tauri build  
+pnpm tauri build
+
+## Android
 pnpm android:dev  
 pnpm android:build  
 
+## Server
 cd src-tauri  
 cargo run --bin attendance-server --features server  
 
-rustup target add x86_64-unknown-linux-musl  
-
-生成 Android Release 签名
+## 生成 Android Release 签名
 在以下路径下生成签名文件
 \src-tauri\gen\android\key.properties
 文件内容如下
