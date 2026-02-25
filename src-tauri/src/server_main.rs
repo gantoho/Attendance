@@ -10,18 +10,11 @@ use axum::{
 };
 use models::*;
 use database::Database;
-use std::{collections::HashMap, net::{SocketAddr, UdpSocket}, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
 
 type AppState = Arc<Mutex<Database>>;
-
-fn get_local_ip() -> Option<String> {
-    let socket = UdpSocket::bind(("0.0.0.0", 0)).ok()?;
-    socket.connect("8.8.8.8:80").ok()?;
-    let local_addr = socket.local_addr().ok()?;
-    Some(local_addr.ip().to_string())
-}
 
 #[tokio::main]
 async fn main() {
@@ -52,7 +45,7 @@ async fn main() {
         .with_state(state);
 
     let bind: SocketAddr = std::env::var("BIND_ADDRESS")
-        .unwrap_or_else(|_| format!("{}:7982", get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string())))
+        .unwrap_or_else(|_| "0.0.0.0:7982".to_string())
         .parse()
         .expect("Invalid BIND_ADDRESS");
 
