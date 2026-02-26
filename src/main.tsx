@@ -1,37 +1,56 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { ConfigProvider, theme as antdTheme } from "antd";
-import zhCN from "antd/locale/zh_CN";
+import { HeroUIProvider, Alert } from "@heroui/react";
 import App from "./App";
 import "./App.css";
 import { useUIStore } from "./store/uiStore";
+import { startSafeAreaWatcher } from "./utils/safeArea";
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message?: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: undefined };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, message: error?.message || String(error) };
+  }
+  componentDidCatch() {}
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 16 }}>
+          <Alert color="danger" radius="lg">
+            应用发生错误：{this.state.message || '未知错误'}
+          </Alert>
+        </div>
+      );
+    }
+    return this.props.children as any;
+  }
+}
 
 function ThemedApp() {
   const theme = useUIStore((s) => s.theme);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
-      root.classList.add('theme-dark');
+      root.classList.add('theme-dark', 'dark');
     } else {
-      root.classList.remove('theme-dark');
+      root.classList.remove('theme-dark', 'dark');
     }
   }, [theme]);
+  useEffect(() => {
+    startSafeAreaWatcher();
+  }, []);
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        algorithm: theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#007AFF',
-          borderRadius: 8,
-        },
-      }}
-    >
+    <HeroUIProvider>
       <BrowserRouter>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </BrowserRouter>
-    </ConfigProvider>
+    </HeroUIProvider>
   );
 }
 

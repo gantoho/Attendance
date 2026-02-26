@@ -1,36 +1,38 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, message, Modal, Space, Typography } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
+import { User, Lock } from 'lucide-react';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
+import { notify } from '../utils/notify';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [serverVisible, setServerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState<string>(() => localStorage.getItem('server_base_url') || '');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  const handleLogin = async () => {
+    if (!username || !password) {
+      notify.warning('请输入用户名和密码');
+      return;
+    }
     setLoading(true);
     try {
-      const response = await commands.login({
-        username: values.username,
-        password: values.password,
-      });
-
+      const response = await commands.login({ username, password });
       if (response.success && response.user) {
-        const user = response.user;
-        login(user);
-        message.success('登录成功');
-        navigate(user.role === 'admin' ? '/admin' : '/user');
+        login(response.user);
+        notify.success('登录成功');
+        navigate(response.user.role === 'admin' ? '/admin' : '/user');
       } else {
-        message.error(response.message || '登录失败');
+        notify.error(response.message || '登录失败');
       }
     } catch (error) {
-      message.error('登录失败，请重试');
+      notify.error('登录失败，请重试');
       console.error(error);
     } finally {
       setLoading(false);
@@ -45,23 +47,22 @@ export default function Login() {
   const onSaveServer = () => {
     if (serverUrl) {
       try {
-        // 标准化去掉尾部斜杠
         const normalized = serverUrl.replace(/\/+$/, '');
         localStorage.setItem('server_base_url', normalized);
-        message.success('服务器地址已保存');
+        notify.success('服务器地址已保存');
         setServerVisible(false);
       } catch {
-        message.error('保存服务器地址失败');
+        notify.error('保存服务器地址失败');
       }
     } else {
       localStorage.removeItem('server_base_url');
-      message.success('已切换为本地数据库模式');
+      notify.success('已切换为本地数据库模式');
       setServerVisible(false);
     }
   };
   const onTestServer = async () => {
     if (!serverUrl) {
-      message.warning('请输入服务器地址');
+      notify.warning('请输入服务器地址');
       return;
     }
     const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
@@ -105,17 +106,16 @@ export default function Login() {
       const res = await fetch(target, { method: 'GET' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json().catch(() => ({}));
-      message.success(`连通性正常：${data?.status || 'ok'}`);
+      notify.success(`连通性正常：${data?.status || 'ok'}`);
     } catch (e: any) {
       console.error(e);
-      const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
       const isAndroid = /Android/i.test(ua);
       const tipForEmulator =
         isAndroid && /^(http:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)
           ? '（安卓模拟器请使用 http://10.0.2.2:端口 访问您电脑上的后端）'
           : '';
       const reason = e?.message ? `；原因：${e.message}` : '';
-      message.error(`无法连接到服务器，请检查地址或服务是否已启动${reason} ${tipForEmulator}`.trim());
+      notify.error(`无法连接到服务器，请检查地址或服务是否已启动${reason} ${tipForEmulator}`.trim());
     }
   };
 
@@ -124,70 +124,68 @@ export default function Login() {
       <div className="login-header">
         <h1>Attendance</h1>
         <p>欢迎回来，请登录您的账号</p>
-        <Button size="small" type="link" onClick={onOpenServer}>
+        <Button size="md" radius="lg" variant="light" onPress={onOpenServer}>
           服务器设置
         </Button>
       </div>
-      <Card className="login-card" variant="borderless">
-        <Form
-          name="login"
-          onFinish={onFinish}
-          autoComplete="off"
-          size="large"
+      <div className="login-content">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin();
+          }}
           className="login-form"
         >
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} placeholder="用户名" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password prefix={<LockOutlined style={{ color: '#bfbfbf' }} />} placeholder="密码" />
-          </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block className="login-submit-btn">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Input
+              startContent={<User size={18} style={{ color: '#bfbfbf' }} />}
+              placeholder="用户名"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              size="md"
+              radius="lg"
+            />
+            <Input
+              startContent={<Lock size={18} style={{ color: '#bfbfbf' }} />}
+              placeholder="密码"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              size="md"
+              radius="lg"
+            />
+            <Button size="md" radius="lg" color="primary" type="submit" isLoading={loading} className="login-submit-btn">
               登录
             </Button>
-          </Form.Item>
-        </Form>
-        <div className="login-tips">
-          <p>默认管理员账号: admin / admin123</p>
-        </div>
-      </Card>
-      <Modal
-        title="服务器设置"
-        open={serverVisible}
-        onOk={onSaveServer}
-        onCancel={onCancelServer}
-        okText="保存"
-        cancelText="取消"
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Typography.Text type="secondary">
-            留空表示使用本地数据库（设备内存储）。填写例如：https://your-domain.com
-          </Typography.Text>
-          <Input
-            placeholder="服务器地址，如 https://your-domain.com"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button onClick={onTestServer}>测试连接</Button>
           </div>
-          {localStorage.getItem('server_base_url') ? (
-            <Typography.Text>
-              当前：{localStorage.getItem('server_base_url')}
-            </Typography.Text>
-          ) : (
-            <Typography.Text>当前：本地数据库模式</Typography.Text>
-          )}
-        </Space>
+        </form>
+      </div>
+      <Modal isOpen={serverVisible} onOpenChange={setServerVisible}>
+        <ModalContent>
+          <ModalHeader>服务器设置</ModalHeader>
+          <ModalBody>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              留空表示使用本地数据库（设备内存储）。填写例如：https://your-domain.com
+            </p>
+            <Input
+              placeholder="服务器地址，如 https://your-domain.com"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              size="md"
+              radius="lg"
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button size="md" radius="lg" onPress={onTestServer}>测试连接</Button>
+            </div>
+            <p>
+              当前：{localStorage.getItem('server_base_url') || '本地数据库模式'}
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button size="md" radius="lg" variant="light" onPress={onCancelServer}>取消</Button>
+            <Button size="md" radius="lg" color="primary" onPress={onSaveServer}>保存</Button>
+          </ModalFooter>
+        </ModalContent>
       </Modal>
     </div>
   );

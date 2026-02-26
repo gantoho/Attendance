@@ -1,39 +1,21 @@
-import { useState, useEffect } from 'react';
-import {
-  Button,
-  Modal,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  message,
-  Spin,
-  Tag,
-  Popconfirm,
-} from 'antd';
-import {
-  UserOutlined,
-  EnvironmentOutlined,
-  HistoryOutlined,
-  LogoutOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem, Spinner, Chip } from '@heroui/react';
+import { User as UserIcon, MapPin, History, LogOut, Plus, Edit, Trash2 } from 'lucide-react';
+import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom';
+import { useAdminDataStore } from '../store/adminDataStore';
 import type { User, Location } from '../types';
-import dayjs from 'dayjs';
 import MapSelector from '../components/MapSelector';
 import MobileLayout from '../components/MobileLayout';
 import ThemeToggle from '../components/ThemeToggle';
 import './AdminDashboard.css';
 import { getPrecisePosition } from '../utils/geolocation';
-import { useAdminDataStore } from '../store/adminDataStore';
+import { notify } from '../utils/notify';
 
 export default function AdminDashboard() {
-  const [selectedMenu, setSelectedMenu] = useState('users');
+  const [selectedMenu, setSelectedMenu] = useState<'users' | 'locations' | 'records'>('users');
   const [userModalVisible, setUserModalVisible] = useState(false);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
@@ -42,6 +24,10 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [locationMapReady, setLocationMapReady] = useState(false);
   const [latLngSelected, setLatLngSelected] = useState(false);
+  const [userFormState, setUserFormState] = useState<{ username: string; password: string }>({ username: '', password: '' });
+  const [locFormState, setLocFormState] = useState<{ name: string; latitude?: number; longitude?: number; radius: number }>({ name: '', radius: 200 });
+  const [assignLocId, setAssignLocId] = useState<string | null>(null);
+
   const users = useAdminDataStore((s) => s.users);
   const locations = useAdminDataStore((s) => s.locations);
   const records = useAdminDataStore((s) => s.records);
@@ -54,9 +40,7 @@ export default function AdminDashboard() {
   const loadRecords = useAdminDataStore((s) => s.loadRecords);
   const refreshUsers = useAdminDataStore((s) => s.refreshUsers);
   const refreshLocations = useAdminDataStore((s) => s.refreshLocations);
-  const [form] = Form.useForm();
-  const [locationForm] = Form.useForm();
-  const [assignForm] = Form.useForm();
+
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -80,11 +64,8 @@ export default function AdminDashboard() {
     }
   }, [user, selectedMenu]);
 
-  
-
-  const handleCreateUser = async (values: any) => {
+  const handleCreateUser = async (values: { username: string; password: string }) => {
     if (!user) return;
-    
     try {
       await commands.createUser({
         username: values.username,
@@ -92,13 +73,13 @@ export default function AdminDashboard() {
         role: 'user',
         adminId: user.id,
       });
-      message.success('创建用户成功');
+      notify.success('创建用户成功');
       setUserModalVisible(false);
-      form.resetFields();
+      setUserFormState({ username: '', password: '' });
       await refreshUsers();
     } catch (error: any) {
       const errorMessage = error?.message || error || '创建用户失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
@@ -106,18 +87,17 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (userId: string) => {
     try {
       await commands.deleteUser(userId);
-      message.success('删除用户成功');
+      notify.success('删除用户成功');
       await refreshUsers();
     } catch (error: any) {
       const errorMessage = error?.message || error || '删除用户失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
 
-  const handleCreateLocation = async (values: any) => {
+  const handleCreateLocation = async (values: { name: string; latitude: number; longitude: number; radius: number }) => {
     if (!user) return;
-    
     try {
       await commands.createLocation({
         name: values.name,
@@ -126,20 +106,19 @@ export default function AdminDashboard() {
         radius: values.radius,
         adminId: user.id,
       });
-      message.success('创建位置成功');
+      notify.success('创建位置成功');
       setLocationModalVisible(false);
-      locationForm.resetFields();
+      setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
       await refreshLocations();
     } catch (error: any) {
       const errorMessage = error?.message || error || '创建位置失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
 
-  const handleUpdateLocation = async (values: any) => {
+  const handleUpdateLocation = async (values: { name: string; latitude: number; longitude: number; radius: number }) => {
     if (!editingLocation) return;
-    
     try {
       await commands.updateLocation(editingLocation.id, {
         name: values.name,
@@ -147,14 +126,14 @@ export default function AdminDashboard() {
         longitude: values.longitude,
         radius: values.radius,
       });
-      message.success('更新位置成功');
+      notify.success('更新位置成功');
       setLocationModalVisible(false);
       setEditingLocation(null);
-      locationForm.resetFields();
+      setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
       await refreshLocations();
     } catch (error: any) {
       const errorMessage = error?.message || error || '更新位置失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
@@ -162,18 +141,18 @@ export default function AdminDashboard() {
   const handleDeleteLocation = async (locationId: string) => {
     try {
       await commands.deleteLocation(locationId);
-      message.success('删除位置成功');
+      notify.success('删除位置成功');
       await refreshLocations();
     } catch (error: any) {
       const errorMessage = error?.message || error || '删除位置失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
 
   const handleEditLocation = (location: Location) => {
     setEditingLocation(location);
-    locationForm.setFieldsValue(location);
+    setLocFormState({ name: location.name, latitude: location.latitude, longitude: location.longitude, radius: location.radius });
     setMapPosition([location.latitude, location.longitude]);
     setLatLngSelected(true);
     setLocationMapReady(false);
@@ -182,25 +161,21 @@ export default function AdminDashboard() {
 
   const handleAssignLocation = (user: User) => {
     setSelectedUser(user);
-    assignForm.resetFields();
-    // 打开弹窗前设置回显
-    assignForm.setFieldsValue({ locationId: user.locationId });
+    setAssignLocId(user.locationId || null);
     setAssignLocationModalVisible(true);
   };
 
-  const handleAssignLocationSubmit = async (values: any) => {
+  const handleAssignLocationSubmit = async (values: { locationId: string }) => {
     if (!selectedUser) return;
-    
     try {
       await commands.updateUserLocation(selectedUser.id, values.locationId);
-      message.success('分配位置成功');
+      notify.success('分配位置成功');
       setAssignLocationModalVisible(false);
       setSelectedUser(null);
-      // 分配成功后刷新用户列表缓存
       await refreshUsers();
     } catch (error: any) {
       const errorMessage = error?.message || error || '分配位置失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
@@ -217,11 +192,15 @@ export default function AdminDashboard() {
           <div className="admin-card">
             <div className="card-header">
               <h3>员工管理</h3>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setUserModalVisible(true)}>
+              <Button size="md" radius="lg" color="primary" variant="solid" startContent={<Plus />} onPress={() => setUserModalVisible(true)}>
                 添加
               </Button>
             </div>
-            <Spin spinning={loadingUsers || loadingLocations}>
+            {loadingUsers || loadingLocations ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                <Spinner label="加载中..." />
+              </div>
+            ) : (
               <div className="admin-list">
                 {users.map(u => (
                   <div key={u.id} className="admin-list-item">
@@ -229,7 +208,7 @@ export default function AdminDashboard() {
                     <div className="list-item-sub">
                       {u.locationId ? (
                         <>
-                          <EnvironmentOutlined />
+                          <MapPin size={16} />
                           {locations.find(l => l.id === u.locationId)?.name || '未知位置'}
                         </>
                       ) : (
@@ -238,24 +217,27 @@ export default function AdminDashboard() {
                     </div>
                     <div className="list-item-actions">
                       <Button 
-                        type="primary"
-                        ghost
-                        size="small" 
-                        icon={<EnvironmentOutlined />} 
-                        onClick={() => handleAssignLocation(u)}
+                        color="primary"
+                        variant="bordered"
+                        size="sm" 
+                        radius="lg"
+                        startContent={<MapPin size={16} />} 
+                        onPress={() => handleAssignLocation(u)}
                       >
                         分配
                       </Button>
-                      <Popconfirm title="确定删除吗？" onConfirm={() => handleDeleteUser(u.id)}>
-                        <Button size="small" danger ghost icon={<DeleteOutlined />}>
-                          删除
-                        </Button>
-                      </Popconfirm>
+                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={async () => {
+                        if (window.confirm('确定删除吗？')) {
+                          await handleDeleteUser(u.id);
+                        }
+                      }}>
+                        删除
+                      </Button>
                     </div>
                   </div>
                 ))}
               </div>
-            </Spin>
+            )}
           </div>
         );
       case 'locations':
@@ -263,58 +245,63 @@ export default function AdminDashboard() {
           <div className="admin-card">
             <div className="card-header">
               <h3>考勤点管理</h3>
-              <Button type="primary" icon={<PlusOutlined />} onClick={async () => {
+              <Button size="md" radius="lg" color="primary" variant="solid" startContent={<Plus />} onPress={async () => {
                 setEditingLocation(null);
-                locationForm.resetFields();
+                setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
                 setLatLngSelected(false);
                 setLocationMapReady(false);
                 setLocationModalVisible(true);
-                // 弹窗先显示，再异步获取定位，避免阻塞打开
                 (async () => {
                   try {
                     const pos = await getCurrentPosition();
                     const lat = pos.latitude;
                     const lng = pos.longitude;
                     setMapPosition([lat, lng]);
-                    locationForm.setFieldsValue({ latitude: lat, longitude: lng });
+                    setLocFormState((s) => ({ ...s, latitude: lat, longitude: lng }));
                     setLatLngSelected(true);
                   } catch {
-                    // 定位失败则保持默认北京坐标，用户可在地图上选择
                   }
                 })();
               }}>
                 添加
               </Button>
             </div>
-            <Spin spinning={loadingLocations}>
+            {loadingLocations ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                <Spinner label="加载中..." />
+              </div>
+            ) : (
               <div className="admin-list">
                 {locations.map(l => (
                   <div key={l.id} className="admin-list-item">
                     <div className="list-item-title">{l.name}</div>
                     <div className="list-item-sub">
-                      <EnvironmentOutlined />
+                      <MapPin size={16} />
                       半径: {l.radius}米 | {l.latitude.toFixed(4)}, {l.longitude.toFixed(4)}
                     </div>
                     <div className="list-item-actions">
                       <Button 
-                        type="primary"
-                        ghost
-                        size="small" 
-                        icon={<EditOutlined />} 
-                        onClick={() => handleEditLocation(l)}
+                        color="primary"
+                        variant="bordered"
+                        size="sm" 
+                        radius="lg"
+                        startContent={<Edit />} 
+                        onPress={() => handleEditLocation(l)}
                       >
                         编辑
                       </Button>
-                      <Popconfirm title="确定删除吗？" onConfirm={() => handleDeleteLocation(l.id)}>
-                        <Button size="small" danger ghost icon={<DeleteOutlined />}>
-                          删除
-                        </Button>
-                      </Popconfirm>
+                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={async () => {
+                        if (window.confirm('确定删除吗？')) {
+                          await handleDeleteLocation(l.id);
+                        }
+                      }}>
+                        删除
+                      </Button>
                     </div>
                   </div>
                 ))}
               </div>
-            </Spin>
+            )}
           </div>
         );
       case 'records':
@@ -323,7 +310,11 @@ export default function AdminDashboard() {
             <div className="card-header">
               <h3>考勤记录</h3>
             </div>
-            <Spin spinning={loadingRecords || loadingLocations}>
+            {loadingRecords || loadingLocations ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                <Spinner label="加载中..." />
+              </div>
+            ) : (
               <div className="admin-list">
                 {records.map(r => {
                   const userName = users.find(u => u.id === r.userId)?.username || '未知员工';
@@ -332,23 +323,23 @@ export default function AdminDashboard() {
                     <div key={r.id} className="admin-list-item">
                       <div className="list-item-title">{userName}</div>
                       <div className="list-item-sub">
-                        <EnvironmentOutlined />
+                        <MapPin size={16} />
                         {locationName}
                       </div>
                       <div className="list-item-sub">
-                        <HistoryOutlined />
+                        <History size={16} />
                         {dayjs(r.timestamp * 1000).format('YYYY-MM-DD HH:mm:ss')}
                       </div>
                       <div className="list-item-actions" style={{ borderTop: 'none', marginTop: '8px', paddingTop: 0 }}>
-                        <Tag color={r.status === 'success' ? 'success' : 'error'} style={{ borderRadius: '6px', margin: 0 }}>
+                        <Chip color={r.status === 'success' ? 'success' : 'danger'} variant="flat" className="rounded-md">
                           {r.status === 'success' ? '打卡正常' : '打卡异常'}
-                        </Tag>
+                        </Chip>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </Spin>
+            )}
           </div>
         );
       default:
@@ -362,12 +353,7 @@ export default function AdminDashboard() {
       headerExtra={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ThemeToggle />
-          <Button 
-            type="text" 
-            icon={<LogoutOutlined />} 
-            onClick={handleLogout}
-            style={{ color: 'var(--text-secondary)' }}
-          >
+          <Button size="md" radius="lg" variant="light" startContent={<LogOut />} onPress={handleLogout} className="text-[var(--text-secondary)]">
             退出
           </Button>
         </div>
@@ -378,21 +364,21 @@ export default function AdminDashboard() {
             className={`nav-item ${selectedMenu === 'users' ? 'active' : ''}`}
             onClick={() => setSelectedMenu('users')}
           >
-            <UserOutlined />
+            <UserIcon size={18} />
             <span>员工</span>
           </div>
           <div 
             className={`nav-item ${selectedMenu === 'locations' ? 'active' : ''}`}
             onClick={() => setSelectedMenu('locations')}
           >
-            <EnvironmentOutlined />
+            <MapPin size={18} />
             <span>网点</span>
           </div>
           <div 
             className={`nav-item ${selectedMenu === 'records' ? 'active' : ''}`}
             onClick={() => setSelectedMenu('records')}
           >
-            <HistoryOutlined />
+            <History size={18} />
             <span>记录</span>
           </div>
         </div>
@@ -402,132 +388,143 @@ export default function AdminDashboard() {
         {renderContent()}
       </div>
 
-      {/* Modals remain the same but can be styled via CSS */}
-      <Modal
-        title="添加员工"
-        open={userModalVisible}
-        onCancel={() => setUserModalVisible(false)}
-        onOk={() => form.submit()}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreateUser}>
-          <Form.Item
-            name="username"
-            label="用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input placeholder="请输入用户名" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password placeholder="请输入密码" />
-          </Form.Item>
-        </Form>
+      <Modal isOpen={userModalVisible} onOpenChange={setUserModalVisible}>
+        <ModalContent>
+          <ModalHeader>添加员工</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-3">
+              <Input
+                size="md"
+                radius="lg"
+                label="用户名"
+                placeholder="请输入用户名"
+                value={userFormState.username}
+                onChange={(e) => setUserFormState((s) => ({ ...s, username: e.target.value }))}
+              />
+              <Input
+                size="md"
+                radius="lg"
+                label="密码"
+                type="password"
+                placeholder="请输入密码"
+                value={userFormState.password}
+                onChange={(e) => setUserFormState((s) => ({ ...s, password: e.target.value }))}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button size="md" radius="lg" variant="light" onPress={() => setUserModalVisible(false)}>取消</Button>
+            <Button size="md" radius="lg" color="primary" onPress={() => handleCreateUser(userFormState)}>保存</Button>
+          </ModalFooter>
+        </ModalContent>
       </Modal>
 
-      <Modal
-        title={editingLocation ? '编辑打卡位置' : '添加打卡位置'}
-        open={locationModalVisible}
-        onCancel={() => {
-          setLocationModalVisible(false);
+      <Modal isOpen={locationModalVisible} onOpenChange={(open) => {
+        setLocationModalVisible(!!open);
+        if (!open) {
           setEditingLocation(null);
-          locationForm.resetFields();
-        }}
-        onOk={() => locationForm.submit()}
-        okButtonProps={{ disabled: !locationMapReady || !latLngSelected }}
-        width={600}
-        styles={{ body: { maxHeight: '60vh', overflow: 'auto', paddingBottom: 16 } }}
-        className="location-modal"
-        destroyOnHidden
-      >
-        <Form
-          form={locationForm}
-          layout="vertical"
-          size="small"
-          onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}
-        >
-          <Form.Item
-            name="name"
-            label="位置名称"
-            rules={[{ required: true, message: '请输入位置名称' }]}
-          >
-            <Input size="small" placeholder="例如：软件园办公区" />
-          </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <Form.Item
-              name="latitude"
-              label="纬度"
-              rules={[{ required: true, message: '请在地图上选择位置' }]}
-            >
-              <InputNumber size="small" style={{ width: '100%' }} readOnly />
-            </Form.Item>
-            <Form.Item
-              name="longitude"
-              label="经度"
-              rules={[{ required: true, message: '请在地图上选择位置' }]}
-            >
-              <InputNumber size="small" style={{ width: '100%' }} readOnly />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="radius"
-            label="允许打卡半径 (米)"
-            initialValue={200}
-            rules={[{ required: true, message: '请输入半径' }]}
-          >
-            <InputNumber size="small" style={{ width: '100%' }} min={50} max={5000} />
-          </Form.Item>
-          
-          <div style={{ marginBottom: '8px', position: 'relative', zIndex: 1 }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>选择位置:</label>
-            <MapSelector 
-              center={mapPosition} 
-              lazyInit
-              onReady={() => setLocationMapReady(true)}
-              overlayVisible={!latLngSelected && !editingLocation}
-              overlayText="正在获取位置信息…"
-              onChange={(lat: number, lng: number) => {
-                locationForm.setFieldsValue({ latitude: lat, longitude: lng });
-                setLatLngSelected(true);
-              }} 
-            />
-          </div>
-        </Form>
+          setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
+        }
+      }}>
+        <ModalContent>
+          <ModalHeader>{editingLocation ? '编辑打卡位置' : '添加打卡位置'}</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-3">
+              <Input
+                size="md"
+                radius="lg"
+                label="位置名称"
+                placeholder="例如：软件园办公区"
+                value={locFormState.name}
+                onChange={(e) => setLocFormState((s) => ({ ...s, name: e.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input size="md" radius="lg" label="纬度" readOnly value={locFormState.latitude != null ? String(locFormState.latitude) : ''} />
+                <Input size="md" radius="lg" label="经度" readOnly value={locFormState.longitude != null ? String(locFormState.longitude) : ''} />
+              </div>
+              <Input
+                size="md"
+                radius="lg"
+                label="允许打卡半径 (米)"
+                type="number"
+                min={50}
+                max={5000}
+                value={String(locFormState.radius)}
+                onChange={(e) => setLocFormState((s) => ({ ...s, radius: Math.max(50, Math.min(5000, Number(e.target.value) || 0)) }))}
+              />
+              <div style={{ marginBottom: 8, position: 'relative', zIndex: 1 }}>
+                <label style={{ display: 'block', marginBottom: 8 }}>选择位置:</label>
+                <MapSelector 
+                  center={mapPosition} 
+                  lazyInit
+                  onReady={() => setLocationMapReady(true)}
+                  overlayVisible={!latLngSelected && !editingLocation}
+                  overlayText="正在获取位置信息…"
+                  onChange={(lat: number, lng: number) => {
+                    setLocFormState((s) => ({ ...s, latitude: lat, longitude: lng }));
+                    setLatLngSelected(true);
+                  }} 
+                />
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button size="md" radius="lg" variant="light" onPress={() => {
+              setLocationModalVisible(false);
+              setEditingLocation(null);
+              setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
+            }}>取消</Button>
+            <Button size="md" radius="lg" color="primary" isDisabled={!locationMapReady || !latLngSelected} onPress={async () => {
+              const values = { 
+                name: locFormState.name, 
+                latitude: locFormState.latitude!, 
+                longitude: locFormState.longitude!, 
+                radius: locFormState.radius 
+              };
+              if (editingLocation) {
+                await handleUpdateLocation(values);
+              } else {
+                await handleCreateLocation(values);
+              }
+            }}>保存</Button>
+          </ModalFooter>
+        </ModalContent>
       </Modal>
 
-      <Modal
-        title="分配打卡位置"
-        open={assignLocationModalVisible}
-        onCancel={() => {
-          setAssignLocationModalVisible(false);
-          assignForm.resetFields();
-        }}
-        onOk={() => assignForm.submit()}
-        destroyOnHidden
-      >
-        <Form
-          form={assignForm}
-          layout="vertical"
-          onFinish={handleAssignLocationSubmit}
-        >
-          <p>正在为员工 <strong>{selectedUser?.username}</strong> 分配打卡位置</p>
-          <Form.Item
-            name="locationId"
-            label="选择网点"
-            rules={[{ required: true, message: '请选择位置' }]}
-          >
-            <Select placeholder="请选择位置">
-              {locations.map(loc => (
-                <Select.Option key={loc.id} value={loc.id}>
+      <Modal isOpen={assignLocationModalVisible} onOpenChange={setAssignLocationModalVisible}>
+        <ModalContent>
+          <ModalHeader>分配打卡位置</ModalHeader>
+          <ModalBody>
+            <p>正在为员工 <strong>{selectedUser?.username}</strong> 分配打卡位置</p>
+            <Select
+              size="md"
+              radius="lg"
+              label="选择网点"
+              placeholder="请选择位置"
+              selectedKeys={assignLocId ? new Set([assignLocId]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const first = Array.from(keys as Set<string>)[0];
+                setAssignLocId(first ?? null);
+              }}
+            >
+              {locations.map((loc) => (
+                <SelectItem key={loc.id}>
                   {loc.name}
-                </Select.Option>
+                </SelectItem>
               ))}
             </Select>
-          </Form.Item>
-        </Form>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setAssignLocationModalVisible(false)}>取消</Button>
+            <Button 
+              color="primary" 
+              isDisabled={!assignLocId || !selectedUser}
+              onPress={() => handleAssignLocationSubmit({ locationId: assignLocId! })}
+            >
+              保存
+            </Button>
+          </ModalFooter>
+        </ModalContent>
       </Modal>
     </MobileLayout>
   );

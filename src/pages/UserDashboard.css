@@ -2,24 +2,24 @@
   display: flex;
   align-items: center;
   background: var(--card-bg);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm);
   border-radius: var(--border-radius);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   box-shadow: var(--shadow-sm);
 }
 
 .user-avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   background: var(--primary-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  margin-right: var(--spacing-md);
+  margin-right: var(--spacing-sm);
 }
 
 .user-details h3 {
@@ -38,9 +38,9 @@
   position: relative;
   border-radius: var(--border-radius);
   overflow: hidden;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  height: 260px;
+  height: 220px;
 }
 
 #user-map {
@@ -53,7 +53,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .card-header h3 {
@@ -73,7 +73,7 @@
 }
 
 .clock-display {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 }
 
 .clock-display .time {
@@ -97,12 +97,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
 .check-in-button {
-  width: 180px;
-  height: 180px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, var(--primary-color) 0%, #0050b3 100%);
@@ -111,7 +111,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 12px 32px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 10px 26px rgba(0, 122, 255, 0.28);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
   overflow: hidden;
@@ -174,14 +174,14 @@
 .records-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
 .record-item {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-md);
-  padding-bottom: var(--spacing-md);
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
   border-bottom: 1px solid var(--glass-border);
 }
 
@@ -217,7 +217,7 @@
 
 .empty-records {
   text-align: center;
-  padding: var(--spacing-lg) 0;
+  padding: var(--spacing-md) 0;
   color: var(--text-secondary);
   font-size: 14px;
 }

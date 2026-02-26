@@ -9,14 +9,14 @@
 }
 
 .mobile-header {
-  height: 60px;
+  height: 52px;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-lg);
+  padding: 0 var(--spacing-md);
   border-bottom: 1px solid var(--glass-border);
   z-index: 100;
   flex-shrink: 0;
@@ -24,7 +24,7 @@
 
 .mobile-header {
   padding-top: clamp(0px, env(safe-area-inset-top), 24px);
-  height: calc(60px + clamp(0px, env(safe-area-inset-top), 24px));
+  height: calc(52px + clamp(0px, env(safe-area-inset-top), 24px));
 }
 
 .header-left {
@@ -34,7 +34,7 @@
 }
 
 .header-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-main);
   margin: 0;
@@ -42,8 +42,8 @@
 
 .back-button {
   padding: 0;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -53,12 +53,12 @@
 .mobile-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-md);
   -webkit-overflow-scrolling: touch;
 }
 
 .mobile-footer {
-  height: 70px;
+  height: 60px;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  padding-bottom: var(--safe-area-bottom, 0px);
   flex-shrink: 0;
 }
 

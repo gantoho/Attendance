@@ -1,3 +1,8 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+@config "../tailwind.config.js";
+@source "../node_modules/@heroui/theme/dist/";
+
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
@@ -15,11 +20,11 @@
   --card-bg: rgba(255, 255, 255, 0.85);
   --text-main: #000000;
   --text-secondary: #8E8E93;
-  --border-radius: 16px;
-  --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
+  --border-radius: 12px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
