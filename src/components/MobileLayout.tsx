@@ -42,7 +42,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         </div>
       </header>
       
-      <main className="mobile-content page-enter">
+      <main className={`mobile-content page-enter ${bottomNav ? 'has-footer' : ''}`}>
         {children}
       </main>
 

@@ -25,10 +25,19 @@ export function startSafeAreaWatcher() {
     const envBottom = readEnv('safe-area-inset-bottom');
     if (envTop > 0) top = envTop;
     if (envBottom > 0) bottom = envBottom;
-    if (top === 0 || bottom === 0) {
-      const vv = computeVV();
-      if (top === 0 && vv.top > 0) top = vv.top;
-      if (bottom === 0 && vv.bottom > 0) bottom = vv.bottom;
+    const vv = computeVV();
+    // 过滤键盘：当键盘弹出时，visualViewport.height 会显著变小
+    const keyboardLikely =
+      (window as any).visualViewport &&
+      (window.innerHeight - (window as any).visualViewport.height) > Math.max(140, window.innerHeight * 0.22);
+
+    // 顶部：若 env 不可用且 vv.top 在合理范围(2-100px)，使用 vv.top
+    if (top === 0) {
+      if (vv.top >= 2 && vv.top <= 100) top = vv.top;
+    }
+    // 底部：若 env 不可用且非键盘场景，vv.bottom 在合理范围(2-100px)时使用
+    if (bottom === 0 && !keyboardLikely) {
+      if (vv.bottom >= 2 && vv.bottom <= 100) bottom = vv.bottom;
     }
     document.documentElement.style.setProperty('--safe-area-top', `${Math.round(top)}px`);
     document.documentElement.style.setProperty('--safe-area-bottom', `${Math.round(bottom)}px`);
