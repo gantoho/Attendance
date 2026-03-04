@@ -25,6 +25,11 @@ export default function Login() {
     try {
       const response = await commands.login({ username, password });
       if (response.success && response.user) {
+        if (response.token) {
+          try {
+            localStorage.setItem('auth_token', response.token);
+          } catch {}
+        }
         login(response.user);
         notify.success('登录成功');
         navigate(response.user.role === 'admin' ? '/admin' : '/user');
@@ -92,14 +97,14 @@ export default function Login() {
         const u = new URL(base);
         const p = u.pathname || '/';
         if (p === '/' || p === '') {
-          return `${base}/health`;
+          return `${base}/api/v1/health`;
         }
-        if (/\/health\/?$/i.test(p)) {
+        if (/\/api\/v1\/health\/?$/i.test(p)) {
           return base;
         }
-        return `${base}/health`;
+        return `${base}/api/v1/health`;
       } catch {
-        return /\/health\/?$/i.test(base) ? base : `${base}/health`;
+        return /\/api\/v1\/health\/?$/i.test(base) ? base : `${base}/api/v1/health`;
       }
     })();
     try {

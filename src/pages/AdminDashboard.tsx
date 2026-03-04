@@ -204,7 +204,14 @@ export default function AdminDashboard() {
               <div className="admin-list">
                 {users.map(u => (
                   <div key={u.id} className="admin-list-item">
-                    <div className="list-item-title">{u.username}</div>
+                    <div className="list-item-title">
+                      {u.username}
+                      <span style={{ marginLeft: 8 }}>
+                        <Chip size="sm" color={u.role === 'admin' ? 'primary' : 'default'} variant="flat">
+                          {u.role === 'admin' ? '管理员' : '员工'}
+                        </Chip>
+                      </span>
+                    </div>
                     <div className="list-item-sub">
                       {u.locationId ? (
                         <>
@@ -214,6 +221,9 @@ export default function AdminDashboard() {
                       ) : (
                         <span style={{ color: 'var(--error-color)' }}>未分配位置</span>
                       )}
+                      <span style={{ marginLeft: 12, color: 'var(--text-secondary)' }}>
+                        创建时间：{u.createTime ? dayjs(u.createTime).format('YYYY-MM-DD HH:mm') : '未设置'}
+                      </span>
                     </div>
                     <div className="list-item-actions">
                       <Button 
