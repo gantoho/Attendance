@@ -31,6 +31,28 @@
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
 
+  /* HeroUI 主题变量覆盖（iOS 蓝） */
+  --heroui-primary: #007AFF;
+  --heroui-primary-50: #e5f1ff;
+  --heroui-primary-100: #cfe6ff;
+  --heroui-primary-200: #a5d2ff;
+  --heroui-primary-300: #6fb7ff;
+  --heroui-primary-400: #3896ff;
+  --heroui-primary-500: #007AFF;
+  --heroui-primary-600: #005fe0;
+  --heroui-primary-700: #004ab8;
+  --heroui-primary-800: #00398f;
+  --heroui-primary-900: #002e73;
+  --heroui-primary-950: #001e4d;
+  --heroui-background: #F2F2F7;
+  --heroui-foreground: #1C1C1E;
+  --heroui-content1: #FFFFFF;
+  --heroui-content2: #F7F7F8;
+  --heroui-content3: #EFEFF1;
+  --heroui-content4: #E5E5EA;
+  --heroui-divider: rgba(60, 60, 67, 0.12);
+  --heroui-focus: #007AFF;
+
   color: var(--text-main);
   background-color: var(--bg-color);
 
@@ -55,6 +77,28 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+
+  /* HeroUI 主题变量覆盖（iOS 深色蓝） */
+  --heroui-primary: #0A84FF;
+  --heroui-primary-50: #e5f3ff;
+  --heroui-primary-100: #cce7ff;
+  --heroui-primary-200: #99ceff;
+  --heroui-primary-300: #66b5ff;
+  --heroui-primary-400: #339cff;
+  --heroui-primary-500: #0A84FF;
+  --heroui-primary-600: #0868cc;
+  --heroui-primary-700: #064e99;
+  --heroui-primary-800: #043566;
+  --heroui-primary-900: #021b33;
+  --heroui-primary-950: #010d1a;
+  --heroui-background: #141414;
+  --heroui-foreground: #E8E8E8;
+  --heroui-content1: #1A1A1A;
+  --heroui-content2: #202020;
+  --heroui-content3: #2A2A2A;
+  --heroui-content4: #333333;
+  --heroui-divider: rgba(255, 255, 255, 0.12);
+  --heroui-focus: #0A84FF;
 }
 
 body {
@@ -62,8 +106,18 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--bg-color);
+  background:
+    radial-gradient(1200px 560px at 50% -12%, rgba(0, 122, 255, 0.09), transparent 62%),
+    radial-gradient(900px 480px at 100% 110%, rgba(52, 199, 89, 0.05), transparent 60%),
+    var(--bg-color);
   overflow-x: hidden;
+}
+
+:root.theme-dark body {
+  background:
+    radial-gradient(1200px 560px at 50% -12%, rgba(10, 132, 255, 0.10), transparent 62%),
+    radial-gradient(900px 480px at 100% 110%, rgba(52, 199, 89, 0.04), transparent 60%),
+    var(--bg-color);
 }
 
 #root {

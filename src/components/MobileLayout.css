@@ -62,7 +62,7 @@
 }
 
 .mobile-footer {
-  height: 60px;
+  height: calc(60px + var(--safe-area-bottom, 0px));
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

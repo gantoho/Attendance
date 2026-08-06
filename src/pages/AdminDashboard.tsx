@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem, Spinner, Chip } from '@heroui/react';
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem, Spinner, Chip, Card, CardBody } from '@heroui/react';
 import { User as UserIcon, MapPin, History, LogOut, Plus, Edit, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -189,7 +189,8 @@ export default function AdminDashboard() {
     switch (selectedMenu) {
       case 'users':
         return (
-          <div className="admin-card">
+          <Card className="mb-3" radius="lg" shadow="sm">
+            <CardBody>
             <div className="card-header">
               <h3>员工管理</h3>
               <Button size="md" radius="lg" color="primary" variant="solid" startContent={<Plus />} onPress={() => setUserModalVisible(true)}>
@@ -248,11 +249,13 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
-          </div>
+            </CardBody>
+          </Card>
         );
       case 'locations':
         return (
-          <div className="admin-card">
+          <Card className="mb-3" radius="lg" shadow="sm">
+            <CardBody>
             <div className="card-header">
               <h3>考勤点管理</h3>
               <Button size="md" radius="lg" color="primary" variant="solid" startContent={<Plus />} onPress={async () => {
@@ -312,11 +315,13 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
-          </div>
+            </CardBody>
+          </Card>
         );
       case 'records':
         return (
-          <div className="admin-card">
+          <Card className="mb-3" radius="lg" shadow="sm">
+            <CardBody>
             <div className="card-header">
               <h3>考勤记录</h3>
             </div>
@@ -350,7 +355,8 @@ export default function AdminDashboard() {
                 })}
               </div>
             )}
-          </div>
+            </CardBody>
+          </Card>
         );
       default:
         return null;

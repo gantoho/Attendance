@@ -16,6 +16,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   color: var(--text-secondary);
   font-size: 11px;
   flex: 1;
@@ -28,18 +29,6 @@
 .nav-item.active {
   color: var(--primary-color);
   background: var(--primary-light);
-}
-
-.nav-item .anticon {
-  font-size: 22px;
-  margin-bottom: 4px;
-}
-
-.admin-card {
-  background: var(--card-bg);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-sm);
-  box-shadow: var(--shadow-sm);
 }
 
 .card-header {
@@ -66,12 +55,15 @@
   margin-bottom: var(--spacing-sm);
   background: var(--card-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: 12px;
   transition: all 0.2s ease;
 }
 
+.admin-list-item:last-child {
+  margin-bottom: 0;
+}
+
 .admin-list-item:hover {
-  background: var(--card-bg);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -100,84 +92,7 @@
   border-top: 1px solid var(--glass-border);
 }
 
-.list-item-actions .ant-btn {
-  border-radius: 8px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 打卡记录列表样式 */
-.record-list-item {
-  padding: var(--spacing-md) 0;
-  border-bottom: 1px solid var(--glass-border);
-}
-
 /* 暗色细节优化 */
 :root.theme-dark .admin-list-item:hover {
   box-shadow: var(--shadow-md);
-}
-:root.theme-dark .record-list-item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.record-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.record-user {
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.record-time {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.record-detail {
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* 适配移动端弹窗 */
-@media (max-width: 576px) {
-  .ant-modal {
-    max-width: calc(100vw - 32px);
-    margin: 8px auto;
-  }
-  
-  .ant-modal-content {
-    padding: 20px 16px;
-    border-radius: 16px;
-  }
-}
-
-/* 位置弹窗表单紧凑样式 */
-.location-modal .ant-form-item {
-  margin-bottom: 10px;
-}
-.location-modal .ant-form-item-label > label {
-  font-size: 12px;
-}
-.location-modal .ant-input,
-.location-modal .ant-input-affix-wrapper,
-.location-modal .ant-select-selector {
-  min-height: 32px;
-  border-radius: 10px;
-  padding: 4px 10px;
-}
-.location-modal .ant-input-number {
-  width: 100%;
-}
-.location-modal .ant-input-number .ant-input-number-input {
-  height: 32px;
-  padding: 4px 10px;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Spinner, Chip } from '@heroui/react';
+import { Button, Spinner, Chip, Card, CardBody, Avatar } from '@heroui/react';
 import { MapPin, CheckCircle2, XCircle, LogOut, History, RefreshCcw } from 'lucide-react';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
@@ -238,23 +238,23 @@ export default function UserDashboard() {
         </div>
       }
     >
-      <div className="user-info-bar">
-        <div className="user-avatar">
-          {user.username.substring(0, 1).toUpperCase()}
-        </div>
-        <div className="user-details">
-          <h3>{user.username}</h3>
-          <p>{user.role === 'admin' ? '管理员' : '普通员工'}</p>
-        </div>
-      </div>
+      <Card className="mb-3" radius="lg" shadow="sm">
+        <CardBody className="flex flex-row items-center gap-3">
+          <Avatar name={user.username.substring(0, 1).toUpperCase()} color="primary" isBordered size="md" />
+          <div className="user-details">
+            <h3>{user.username}</h3>
+            <p>{user.role === 'admin' ? '管理员' : '普通员工'}</p>
+          </div>
+        </CardBody>
+      </Card>
 
       {!assignedLocation ? (
-        <div className="app-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <Card className="mb-3" radius="lg" shadow="sm">
+          <CardBody className="flex flex-col items-center gap-3 py-10">
             <Chip color="warning" variant="flat">未分配打卡位置</Chip>
-            <div style={{ color: 'var(--text-secondary)' }}>请联系管理员为您分配打卡位置</div>
-          </div>
-        </div>
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>请联系管理员为您分配打卡位置</div>
+          </CardBody>
+        </Card>
       ) : (
         <>
           <div className="map-container-wrapper">
@@ -283,74 +283,78 @@ export default function UserDashboard() {
             )}
           </div>
 
-          <div className="app-card check-in-card">
-            <div className="card-header">
-              <h3>打卡上报</h3>
-              <span className="current-date">{currentTime.format('YYYY年MM月DD日')}</span>
-            </div>
-            
-            <div className="clock-display">
-              <div className="time">{currentTime.format('HH:mm:ss')}</div>
-              <div className="location-info">
-                <MapPin size={16} /> {assignedLocation.name}
+          <Card className="check-in-card mb-3" radius="lg" shadow="sm">
+            <CardBody>
+              <div className="card-header">
+                <h3>打卡上报</h3>
+                <span className="current-date">{currentTime.format('YYYY年MM月DD日')}</span>
               </div>
-            </div>
-
-            <div className="action-area">
-              <Button
-                className={`check-in-button ${!isWithinRange() ? 'disabled' : ''}`}
-                color="primary"
-                size="md"
-                radius="lg"
-                isLoading={checkingIn}
-                isDisabled={checkingIn || !isWithinRange()}
-                onPress={handleCheckIn}
-                fullWidth
-              >
-                {checkingIn ? '打卡中' : '上班打卡'}
-              </Button>
               
-              {!isWithinRange() && (
-                <div className="range-warning">
-                  <XCircle size={16} /> 您不在打卡范围内
+              <div className="clock-display">
+                <div className="time">{currentTime.format('HH:mm:ss')}</div>
+                <div className="location-info">
+                  <MapPin size={16} /> {assignedLocation.name}
                 </div>
-              )}
-              {locationAccuracy !== null && locationAccuracy > 50 && (
-                <div className="range-warning" style={{ marginTop: 8 }}>
-                  <XCircle size={16} /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <div className="app-card">
-            <div className="card-header">
-              <h3>打卡记录</h3>
-              <History size={18} />
-            </div>
-            <div className="records-list">
-              {records.length > 0 ? (
-                records.map((record) => (
-                  <div key={record.id} className="record-item">
-                    <div className="record-time">
-                      {dayjs(record.timestamp * 1000).format('HH:mm')}
-                    </div>
-                    <div className="record-info">
-                      <div className="record-status">
-                        <CheckCircle2 style={{ color: 'var(--success-color)' }} />
-                        <span>打卡成功</span>
-                      </div>
-                      <div className="record-loc">
-                        {assignedLocation.name}
-                      </div>
-                    </div>
+              <div className="action-area">
+                <Button
+                  className={`check-in-button ${!isWithinRange() ? 'disabled' : ''}`}
+                  color="primary"
+                  size="md"
+                  radius="lg"
+                  isLoading={checkingIn}
+                  isDisabled={checkingIn || !isWithinRange()}
+                  onPress={handleCheckIn}
+                  fullWidth
+                >
+                  {checkingIn ? '打卡中' : '上班打卡'}
+                </Button>
+                
+                {!isWithinRange() && (
+                  <div className="range-warning">
+                    <XCircle size={16} /> 您不在打卡范围内
                   </div>
-                ))
-              ) : (
-                <div className="empty-records">今日暂无打卡记录</div>
-              )}
-            </div>
-          </div>
+                )}
+                {locationAccuracy !== null && locationAccuracy > 50 && (
+                  <div className="range-warning" style={{ marginTop: 8 }}>
+                    <XCircle size={16} /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="mb-3" radius="lg" shadow="sm">
+            <CardBody>
+              <div className="card-header">
+                <h3>打卡记录</h3>
+                <History size={18} style={{ color: 'var(--text-secondary)' }} />
+              </div>
+              <div className="records-list">
+                {records.length > 0 ? (
+                  records.map((record) => (
+                    <div key={record.id} className="record-item">
+                      <div className="record-time">
+                        {dayjs(record.timestamp * 1000).format('HH:mm')}
+                      </div>
+                      <div className="record-info">
+                        <div className="record-status">
+                          <CheckCircle2 size={16} style={{ color: 'var(--success-color)' }} />
+                          <span>打卡成功</span>
+                        </div>
+                        <div className="record-loc">
+                          {assignedLocation.name}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-records">今日暂无打卡记录</div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
         </>
       )}
     </MobileLayout>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
-import { User, Lock } from 'lucide-react';
+import { Button, Input, Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
+import { ClipboardCheck, User, Lock, Server } from 'lucide-react';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -127,28 +127,29 @@ export default function Login() {
   return (
     <div className="login-container">
       <div className="login-header">
+        <div className="login-logo">
+          <ClipboardCheck size={36} />
+        </div>
         <h1>Attendance</h1>
         <p>欢迎回来，请登录您的账号</p>
-        <Button size="md" radius="lg" variant="light" onPress={onOpenServer}>
-          服务器设置
-        </Button>
       </div>
       <div className="login-content">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleLogin();
-          }}
-          className="login-form"
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="login-card">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            className="login-form"
+          >
             <Input
               startContent={<User size={18} style={{ color: '#bfbfbf' }} />}
               placeholder="用户名"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              size="md"
+              size="lg"
               radius="lg"
+              variant="bordered"
             />
             <Input
               startContent={<Lock size={18} style={{ color: '#bfbfbf' }} />}
@@ -156,15 +157,37 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              size="md"
+              size="lg"
               radius="lg"
+              variant="bordered"
             />
-            <Button size="md" radius="lg" color="primary" type="submit" isLoading={loading} className="login-submit-btn">
+            <Button
+              size="lg"
+              radius="lg"
+              color="primary"
+              type="submit"
+              isLoading={loading}
+              fullWidth
+              className="login-submit-btn"
+            >
               登录
             </Button>
-          </div>
-        </form>
+          </form>
+          <Divider className="my-4" />
+          <Button
+            size="sm"
+            radius="lg"
+            variant="light"
+            fullWidth
+            startContent={<Server size={16} />}
+            onPress={onOpenServer}
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            服务器设置
+          </Button>
+        </div>
       </div>
+      <div className="login-footer">Attendance v0.1.0</div>
       <Modal isOpen={serverVisible} onOpenChange={setServerVisible}>
         <ModalContent>
           <ModalHeader>服务器设置</ModalHeader>
