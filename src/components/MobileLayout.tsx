@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button } from 'antd';
-import { LeftOutlined } from '@ant-design/icons';
+import { Button } from '@heroui/react';
+import { ArrowLeft } from 'lucide-react';
 import './MobileLayout.css';
 
 interface MobileLayoutProps {
@@ -26,11 +26,14 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         <div className="header-left">
           {showBack && (
             <Button 
-              type="text" 
-              icon={<LeftOutlined />} 
-              onClick={onBack}
+              variant="light"
+              isIconOnly
+              radius="lg"
+              onPress={onBack}
               className="back-button"
-            />
+            >
+              <ArrowLeft size={18} />
+            </Button>
           )}
           <h1 className="header-title">{title}</h1>
         </div>
@@ -39,7 +42,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         </div>
       </header>
       
-      <main className="mobile-content page-enter">
+      <main className={`mobile-content page-enter ${bottomNav ? 'has-footer' : ''}`}>
         {children}
       </main>
 

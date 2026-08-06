@@ -43,77 +43,96 @@ function normalizeBaseUrl(raw: string): string {
     return input.replace(/\/+$/, '');
   }
 }
+function getAuthToken() {
+  try {
+    return localStorage.getItem('auth_token') || '';
+  } catch {
+    return '';
+  }
+}
+
 
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
   const base = normalizeBaseUrl(getBaseUrl());
+  const token = getAuthToken();
   if (!base) throw new Error('SERVER_BASE_URL 未配置');
   const res = await fetch(`${base}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'Accept': 'application/json',
     },
     ...options,
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    const body = await res.text();
+    throw new Error(body || `HTTP ${res.status}`);
   }
-  return res.json() as Promise<T>;
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const ct = res.headers.get('Content-Type') || '';
+  if (ct.includes('application/json')) {
+    return res.json() as Promise<T>;
+  }
+  return undefined as T;
 }
+
+const API_PREFIX = '/api/v1';
 
 export const httpCommands = {
   login: (request: LoginRequest): Promise<LoginResponse> =>
-    http<LoginResponse>('/login', { method: 'POST', body: JSON.stringify(request) }),
+    http<LoginResponse>(`${API_PREFIX}/login`, { method: 'POST', body: JSON.stringify(request) }),
 
   getAllUsers: (): Promise<User[]> =>
-    http<User[]>('/users'),
+    http<User[]>(`${API_PREFIX}/users`),
 
   getUsersByAdmin: (adminId: string): Promise<User[]> =>
-    http<User[]>(`/users?adminId=${encodeURIComponent(adminId)}`),
+    http<User[]>(`${API_PREFIX}/users`).then((users) => users.filter((u) => u.adminId === adminId)),
 
   createUser: (user: CreateUserRequest): Promise<User> =>
-    http<User>('/users', { method: 'POST', body: JSON.stringify(user) }),
+    http<User>(`${API_PREFIX}/users`, { method: 'POST', body: JSON.stringify(user) }),
 
   deleteUser: (userId: string): Promise<void> =>
-    http<void>(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+    http<void>(`${API_PREFIX}/users/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
 
   updateUserLocation: (userId: string, locationId: string): Promise<User> =>
-    http<User>(`/users/${encodeURIComponent(userId)}/location`, {
+    http<User>(`${API_PREFIX}/users/${encodeURIComponent(userId)}/location`, {
       method: 'PATCH',
       body: JSON.stringify({ locationId }),
     }),
 
   getUserLocation: (userId: string): Promise<Location | null> =>
-    http<Location | null>(`/users/${encodeURIComponent(userId)}/location`),
+    http<Location | null>(`${API_PREFIX}/users/${encodeURIComponent(userId)}/location`),
 
   getAllLocations: (): Promise<Location[]> =>
-    http<Location[]>('/locations'),
+    http<Location[]>(`${API_PREFIX}/locations`),
 
   getLocationsByAdmin: (adminId: string): Promise<Location[]> =>
-    http<Location[]>(`/locations?adminId=${encodeURIComponent(adminId)}`),
+    http<Location[]>(`${API_PREFIX}/locations`).then((locs) => locs.filter((l) => l.adminId === adminId)),
 
   createLocation: (location: CreateLocationRequest): Promise<Location> =>
-    http<Location>('/locations', { method: 'POST', body: JSON.stringify(location) }),
+    http<Location>(`${API_PREFIX}/locations`, { method: 'POST', body: JSON.stringify(location) }),
 
   updateLocation: (locationId: string, location: UpdateLocationRequest): Promise<Location> =>
-    http<Location>(`/locations/${encodeURIComponent(locationId)}`, {
+    http<Location>(`${API_PREFIX}/locations/${encodeURIComponent(locationId)}`, {
       method: 'PATCH',
       body: JSON.stringify(location),
     }),
 
   deleteLocation: (locationId: string): Promise<void> =>
-    http<void>(`/locations/${encodeURIComponent(locationId)}`, { method: 'DELETE' }),
+    http<void>(`${API_PREFIX}/locations/${encodeURIComponent(locationId)}`, { method: 'DELETE' }),
 
   getAttendanceRecords: (userId?: string): Promise<AttendanceRecord[]> =>
-    userId
-      ? http<AttendanceRecord[]>(`/records?userId=${encodeURIComponent(userId)}`)
-      : http<AttendanceRecord[]>('/records'),
+    http<AttendanceRecord[]>(`${API_PREFIX}/records`).then((records) =>
+      userId ? records.filter((r) => r.userId === userId) : records
+    ),
 
   getAttendanceRecordsByAdmin: (adminId: string): Promise<AttendanceRecord[]> =>
-    http<AttendanceRecord[]>(`/records/admin/${encodeURIComponent(adminId)}`),
+    http<AttendanceRecord[]>(`${API_PREFIX}/records/admin/${encodeURIComponent(adminId)}`),
 
   checkIn: (request: CheckInRequest): Promise<CheckInResponse> =>
-    http<CheckInResponse>('/checkin', { method: 'POST', body: JSON.stringify(request) }),
+    http<CheckInResponse>(`${API_PREFIX}/checkin`, { method: 'POST', body: JSON.stringify(request) }),
 
   getCurrentLocation: (): Promise<{ latitude: number; longitude: number }> =>
     Promise.reject(new Error('请使用前端浏览器地理位置 API')),

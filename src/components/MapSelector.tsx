@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { message, Button, Spin } from 'antd';
+import { Button, Spinner } from '@heroui/react';
+import { notify } from '../utils/notify';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getPrecisePosition } from '../utils/geolocation';
@@ -50,10 +51,10 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
             setPosition(initPosition);
             setAccuracy(pos.acc);
             onChange(initPosition[0], initPosition[1]);
-            message.success('已定位到当前位置');
+            notify.success('已定位到当前位置');
           } catch (error) {
             console.error('获取当前位置失败:', error);
-            message.warning('无法获取当前位置，使用默认位置');
+            notify.warning('无法获取当前位置，使用默认位置');
           } finally {
             setIsLocating(false);
           }
@@ -121,7 +122,7 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
         console.log('地图初始化完成');
       } catch (error) {
         console.error('地图初始化错误:', error);
-        message.error('地图初始化失败');
+        notify.error('地图初始化失败');
       }
     };
 
@@ -211,11 +212,10 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
       }
       
       onChange(currentPos.lat, currentPos.lng);
-      
-      message.success('已定位到当前位置');
+      notify.success('已定位到当前位置');
     } catch (error) {
       console.error('定位失败:', error);
-      message.error('定位失败，请检查定位权限');
+      notify.error('定位失败，请检查定位权限');
     } finally {
       setIsLocating(false);
     }
@@ -244,7 +244,7 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
           }}
         >
           <div style={{ pointerEvents: 'none' }}>
-            <Spin tip={overlayText || '地图加载中…'} />
+            <Spinner label={overlayText || '地图加载中…'} />
           </div>
         </div>
       )}
@@ -258,26 +258,26 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
         zIndex: 1000
       }}>
         <Button 
-          size="small" 
+          size="sm" 
+          radius="lg"
           onClick={handleLocate}
-          loading={isLocating}
-          style={{ borderRadius: '4px' }}
+          isLoading={isLocating}
           title="定位到当前位置"
         >
           📍
         </Button>
         <Button 
-          size="small" 
+          size="sm"
+          radius="lg"
           onClick={handleZoomIn}
-          style={{ borderRadius: '4px' }}
           title="放大"
         >
           +
         </Button>
         <Button 
-          size="small" 
+          size="sm"
+          radius="lg"
           onClick={handleZoomOut}
-          style={{ borderRadius: '4px' }}
           title="缩小"
         >
           -

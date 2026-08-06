@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button, message, Spin, Result } from 'antd';
-import { EnvironmentOutlined, CheckCircleOutlined, CloseCircleOutlined, LogoutOutlined, HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Spinner, Chip } from '@heroui/react';
+import { MapPin, CheckCircle2, XCircle, LogOut, History, RefreshCcw } from 'lucide-react';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import './UserDashboard.css';
 import { getPrecisePosition } from '../utils/geolocation';
 import { wgs84ToGcj02, haversine } from '../utils/coord';
+import { notify } from '../utils/notify';
 
 export default function UserDashboard() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -159,7 +160,7 @@ export default function UserDashboard() {
       }
     } catch (error: any) {
       const errorMessage = error?.message || error || '获取位置失败';
-      message.error(`${errorMessage}`);
+      notify.error(`${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -172,7 +173,7 @@ export default function UserDashboard() {
       setRecords(data.slice(0, 10)); // 只显示最近10条
     } catch (error: any) {
       const errorMessage = error?.message || error || '加载打卡记录失败';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     }
   };
@@ -189,14 +190,14 @@ export default function UserDashboard() {
       });
 
       if (response.success) {
-        message.success(response.message || '打卡成功');
+        notify.success(response.message || '打卡成功');
         loadRecords();
       } else {
-        message.error(response.message || '打卡失败');
+        notify.error(response.message || '打卡失败');
       }
     } catch (error: any) {
       const errorMessage = error?.message || error || '打卡失败，请重试';
-      message.error(errorMessage);
+      notify.error(errorMessage);
       console.error(error);
     } finally {
       setCheckingIn(false);
@@ -225,10 +226,12 @@ export default function UserDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ThemeToggle />
           <Button 
-            type="text" 
-            icon={<LogoutOutlined />} 
-            onClick={handleLogout}
-            style={{ color: 'var(--text-secondary)' }}
+            size="md"
+            radius="lg"
+            variant="light"
+            startContent={<LogOut />} 
+            onPress={handleLogout}
+            className="text-[var(--text-secondary)]"
           >
             退出
           </Button>
@@ -247,11 +250,10 @@ export default function UserDashboard() {
 
       {!assignedLocation ? (
         <div className="app-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <Result
-            status="warning"
-            title="未分配打卡位置"
-            subTitle="请联系管理员为您分配打卡位置"
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <Chip color="warning" variant="flat">未分配打卡位置</Chip>
+            <div style={{ color: 'var(--text-secondary)' }}>请联系管理员为您分配打卡位置</div>
+          </div>
         </div>
       ) : (
         <>
@@ -262,19 +264,21 @@ export default function UserDashboard() {
                 精度: {Math.round(locationAccuracy)} 米
               </div>
             )}
-            <Button
-              type="primary"
-              icon={<ReloadOutlined />}
-              onClick={getCurrentLocation}
-              loading={loading}
-              style={{ position: 'absolute', right: 12, top: 12, zIndex: 1100, borderRadius: 8 }}
-              title="重新定位"
-            >
+              <Button
+                size="md"
+                radius="lg"
+                color="primary"
+                startContent={<RefreshCcw />}
+                onPress={getCurrentLocation}
+                isLoading={loading}
+                style={{ position: 'absolute', right: 12, top: 12, zIndex: 1100 }}
+                title="重新定位"
+              >
               刷新定位
             </Button>
             {loading && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', zIndex: 1000 }}>
-                <Spin description="定位中..." />
+                <Spinner label="定位中..." />
               </div>
             )}
           </div>
@@ -288,29 +292,32 @@ export default function UserDashboard() {
             <div className="clock-display">
               <div className="time">{currentTime.format('HH:mm:ss')}</div>
               <div className="location-info">
-                <EnvironmentOutlined /> {assignedLocation.name}
+                <MapPin size={16} /> {assignedLocation.name}
               </div>
             </div>
 
             <div className="action-area">
-              <button 
-                className={`check-in-button ${!isWithinRange() ? 'disabled' : ''} ${checkingIn ? 'loading' : ''}`}
-                onClick={handleCheckIn}
-                disabled={checkingIn || !isWithinRange()}
+              <Button
+                className={`check-in-button ${!isWithinRange() ? 'disabled' : ''}`}
+                color="primary"
+                size="md"
+                radius="lg"
+                isLoading={checkingIn}
+                isDisabled={checkingIn || !isWithinRange()}
+                onPress={handleCheckIn}
+                fullWidth
               >
-                <div className="button-content">
-                  <span className="button-text">{checkingIn ? '打卡中' : '上班打卡'}</span>
-                </div>
-              </button>
+                {checkingIn ? '打卡中' : '上班打卡'}
+              </Button>
               
               {!isWithinRange() && (
                 <div className="range-warning">
-                  <CloseCircleOutlined /> 您不在打卡范围内
+                  <XCircle size={16} /> 您不在打卡范围内
                 </div>
               )}
               {locationAccuracy !== null && locationAccuracy > 50 && (
                 <div className="range-warning" style={{ marginTop: 8 }}>
-                  <CloseCircleOutlined /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
+                  <XCircle size={16} /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
                 </div>
               )}
             </div>
@@ -319,7 +326,7 @@ export default function UserDashboard() {
           <div className="app-card">
             <div className="card-header">
               <h3>打卡记录</h3>
-              <HistoryOutlined />
+              <History size={18} />
             </div>
             <div className="records-list">
               {records.length > 0 ? (
@@ -330,7 +337,7 @@ export default function UserDashboard() {
                     </div>
                     <div className="record-info">
                       <div className="record-status">
-                        <CheckCircleOutlined style={{ color: 'var(--success-color)' }} />
+                        <CheckCircle2 style={{ color: 'var(--success-color)' }} />
                         <span>打卡成功</span>
                       </div>
                       <div className="record-loc">

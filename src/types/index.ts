@@ -3,10 +3,11 @@ export type UserRole = 'admin' | 'user';
 export interface User {
   id: string;
   username: string;
-  password: string;
   role: UserRole;
-  adminId?: string;
-  locationId?: string;
+  adminId?: string | null;
+  locationId?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
 }
 
 export interface CreateUserRequest {
@@ -23,6 +24,8 @@ export interface Location {
   longitude: number;
   radius: number;
   adminId: string;
+  createTime?: string | null;
+  updateTime?: string | null;
 }
 
 export interface CreateLocationRequest {
@@ -49,6 +52,8 @@ export interface AttendanceRecord {
   timestamp: number;
   status: 'success' | 'failed';
   errorMessage?: string;
+  createTime?: string | null;
+  updateTime?: string | null;
 }
 
 export interface LoginRequest {
@@ -60,6 +65,7 @@ export interface LoginResponse {
   success: boolean;
   user?: User;
   message?: string;
+  token?: string;
 }
 
 export interface CheckInRequest {
