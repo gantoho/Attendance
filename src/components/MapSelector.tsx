@@ -26,6 +26,14 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [isReady, setIsReady] = useState(false);
 
+  const markerColor = (() => {
+    try {
+      return getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#007AFF';
+    } catch {
+      return '#007AFF';
+    }
+  })();
+
   const getCurrentPosition = async (): Promise<{ lat: number; lng: number; acc: number }> => {
     const p = await getPrecisePosition({ minSamples: 2, maxSamples: 6, desiredAccuracy: 25, timeoutMs: 15000 });
     return { lat: p.latitude, lng: p.longitude, acc: p.accuracy };
@@ -83,7 +91,7 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
 
         const icon = L.divIcon({
           className: 'custom-marker',
-          html: '<div style="background-color: #ff4444; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+          html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
@@ -94,8 +102,8 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
         if (accuracy && Number.isFinite(accuracy)) {
           accuracyCircleRef.current = L.circle(gcjCenter, {
             radius: Math.max(accuracy, 5),
-            color: '#ff4444',
-            fillColor: '#ff4444',
+            color: markerColor,
+            fillColor: markerColor,
             fillOpacity: 0.08,
             weight: 1,
             dashArray: '4,4',
@@ -202,8 +210,8 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
         } else {
           accuracyCircleRef.current = L.circle(gcj, {
             radius: Math.max(currentPos.acc, 5),
-            color: '#ff4444',
-            fillColor: '#ff4444',
+            color: markerColor,
+            fillColor: markerColor,
             fillOpacity: 0.08,
             weight: 1,
             dashArray: '4,4',
@@ -236,7 +244,7 @@ export default function MapSelector({ center, onChange, lazyInit, onReady, overl
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(255,255,255,0.65)',
+            background: 'var(--card-bg)',
             color: 'var(--text-secondary)',
             fontSize: 12,
             pointerEvents: 'none',

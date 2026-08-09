@@ -40,10 +40,13 @@ pub struct AttendanceRecord {
     pub longitude: f64,
     pub timestamp: i64,
     pub status: AttendanceStatus,
+    /// 打卡类型："in" 上班卡 / "out" 下班卡
+    #[serde(default)]
+    pub check_type: Option<String>,
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum AttendanceStatus {
     Success,
@@ -138,6 +141,7 @@ impl AttendanceRecord {
         latitude: f64,
         longitude: f64,
         status: AttendanceStatus,
+        check_type: Option<String>,
         error_message: Option<String>,
     ) -> Self {
         Self {
@@ -148,6 +152,7 @@ impl AttendanceRecord {
             longitude,
             timestamp: chrono::Utc::now().timestamp(),
             status,
+            check_type,
             error_message,
         }
     }

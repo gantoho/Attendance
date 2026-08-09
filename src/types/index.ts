@@ -51,6 +51,7 @@ export interface AttendanceRecord {
   longitude: number;
   timestamp: number;
   status: 'success' | 'failed';
+  checkType?: string;
   errorMessage?: string;
   createTime?: string | null;
   updateTime?: string | null;

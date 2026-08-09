@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button, Spinner, Chip, Card, CardBody, Avatar } from '@heroui/react';
-import { MapPin, CheckCircle2, XCircle, LogOut, History, RefreshCcw } from 'lucide-react';
+import { MapPin, CheckCircle2, XCircle, LogOut, History, RefreshCcw, Sunrise, Sunset } from 'lucide-react';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,17 @@ import './UserDashboard.css';
 import { getPrecisePosition } from '../utils/geolocation';
 import { wgs84ToGcj02, haversine } from '../utils/coord';
 import { notify } from '../utils/notify';
+
+function getCssVar(name: string, fallback: string): string {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+type CheckState = 'in' | 'out' | 'done';
 
 export default function UserDashboard() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -51,6 +62,19 @@ export default function UserDashboard() {
     }
   }, [location, assignedLocation, map]);
 
+  // 今日打卡状态机：0 次成功 → 上班卡，1 次成功 → 下班卡，2 次成功 → 已完成
+  const todayRecords = useMemo(
+    () =>
+      records
+        .filter((r) => dayjs(r.timestamp * 1000).isSame(dayjs(), 'day'))
+        .sort((a, b) => a.timestamp - b.timestamp),
+    [records]
+  );
+  const successToday = useMemo(() => todayRecords.filter((r) => r.status === 'success'), [todayRecords]);
+  const morningRecord = successToday[0] ?? null;
+  const eveningRecord = successToday[1] ?? null;
+  const checkState: CheckState = successToday.length === 0 ? 'in' : successToday.length === 1 ? 'out' : 'done';
+
   const loadAssignedLocation = async () => {
     if (!user) return;
     try {
@@ -70,6 +94,9 @@ export default function UserDashboard() {
     const currentGcj = wgs84ToGcj02(location.latitude, location.longitude);
     const assignedGcj = wgs84ToGcj02(assignedLocation.latitude, assignedLocation.longitude);
 
+    const primaryColor = getCssVar('--primary-color', '#007AFF');
+    const successColor = getCssVar('--success-color', '#34C759');
+
     const mapInstance = L.map('user-map', {
       center: [currentGcj[0], currentGcj[1]],
       zoom: 16,
@@ -84,7 +111,7 @@ export default function UserDashboard() {
 
     const currentIcon = L.divIcon({
       className: 'current-marker',
-      html: '<div style="background-color: #1890ff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+      html: `<div style="background-color: ${primaryColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
       iconSize: [20, 20],
       iconAnchor: [10, 10],
     });
@@ -95,7 +122,7 @@ export default function UserDashboard() {
 
     const locationIcon = L.divIcon({
       className: 'location-marker',
-      html: '<div style="background-color: #52c41a; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+      html: `<div style="background-color: ${successColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
@@ -106,16 +133,16 @@ export default function UserDashboard() {
 
     L.circle([assignedGcj[0], assignedGcj[1]], {
       radius: assignedLocation.radius,
-      color: '#52c41a',
-      fillColor: '#52c41a',
+      color: successColor,
+      fillColor: successColor,
       fillOpacity: 0.2,
     }).addTo(mapInstance);
 
     if (locationAccuracy && Number.isFinite(locationAccuracy)) {
       const accCircle = L.circle([currentGcj[0], currentGcj[1]], {
         radius: Math.max(locationAccuracy, 5),
-        color: '#1890ff',
-        fillColor: '#1890ff',
+        color: primaryColor,
+        fillColor: primaryColor,
         fillOpacity: 0.1,
         weight: 1,
         dashArray: '4,4',
@@ -143,14 +170,15 @@ export default function UserDashboard() {
       }
       if (map) {
         const gcj = wgs84ToGcj02(newLocation.latitude, newLocation.longitude);
+        const primaryColor = getCssVar('--primary-color', '#007AFF');
         if (accuracyCircle) {
           accuracyCircle.setLatLng([gcj[0], gcj[1]]);
           accuracyCircle.setRadius(Math.max(pos.accuracy, 5));
         } else {
           const circle = L.circle([gcj[0], gcj[1]], {
             radius: Math.max(pos.accuracy, 5),
-            color: '#1890ff',
-            fillColor: '#1890ff',
+            color: primaryColor,
+            fillColor: primaryColor,
             fillOpacity: 0.1,
             weight: 1,
             dashArray: '4,4',
@@ -170,7 +198,8 @@ export default function UserDashboard() {
     if (!user) return;
     try {
       const data = await commands.getAttendanceRecords(user.id);
-      setRecords(data.slice(0, 10)); // 只显示最近10条
+      const sorted = [...data].sort((a, b) => b.timestamp - a.timestamp);
+      setRecords(sorted.slice(0, 10)); // 只显示最近10条
     } catch (error: any) {
       const errorMessage = error?.message || error || '加载打卡记录失败';
       notify.error(errorMessage);
@@ -180,6 +209,7 @@ export default function UserDashboard() {
 
   const handleCheckIn = async () => {
     if (!user || !location) return;
+    if (checkState === 'done') return;
 
     setCheckingIn(true);
     try {
@@ -225,11 +255,11 @@ export default function UserDashboard() {
       headerExtra={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ThemeToggle />
-          <Button 
+          <Button
             size="md"
             radius="lg"
             variant="light"
-            startContent={<LogOut />} 
+            startContent={<LogOut />}
             onPress={handleLogout}
             className="text-[var(--text-secondary)]"
           >
@@ -264,20 +294,20 @@ export default function UserDashboard() {
                 精度: {Math.round(locationAccuracy)} 米
               </div>
             )}
-              <Button
-                size="md"
-                radius="lg"
-                color="primary"
-                startContent={<RefreshCcw />}
-                onPress={getCurrentLocation}
-                isLoading={loading}
-                style={{ position: 'absolute', right: 12, top: 12, zIndex: 1100 }}
-                title="重新定位"
-              >
+            <Button
+              size="md"
+              radius="lg"
+              color="primary"
+              startContent={<RefreshCcw />}
+              onPress={getCurrentLocation}
+              isLoading={loading}
+              style={{ position: 'absolute', right: 12, top: 12, zIndex: 1100 }}
+              title="重新定位"
+            >
               刷新定位
             </Button>
             {loading && (
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', zIndex: 1000 }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card-bg)', zIndex: 1000 }}>
                 <Spinner label="定位中..." />
               </div>
             )}
@@ -286,10 +316,23 @@ export default function UserDashboard() {
           <Card className="check-in-card mb-3" radius="lg" shadow="sm">
             <CardBody>
               <div className="card-header">
-                <h3>打卡上报</h3>
+                <h3>今日打卡</h3>
                 <span className="current-date">{currentTime.format('YYYY年MM月DD日')}</span>
               </div>
-              
+
+              <div className="daily-status">
+                <div className={`daily-chip ${morningRecord ? 'done' : ''}`}>
+                  <Sunrise size={14} />
+                  <span>上班卡</span>
+                  <em>{morningRecord ? dayjs(morningRecord.timestamp * 1000).format('HH:mm') : '未打卡'}</em>
+                </div>
+                <div className={`daily-chip ${eveningRecord ? 'done' : ''}`}>
+                  <Sunset size={14} />
+                  <span>下班卡</span>
+                  <em>{eveningRecord ? dayjs(eveningRecord.timestamp * 1000).format('HH:mm') : '未打卡'}</em>
+                </div>
+              </div>
+
               <div className="clock-display">
                 <div className="time">{currentTime.format('HH:mm:ss')}</div>
                 <div className="location-info">
@@ -298,25 +341,33 @@ export default function UserDashboard() {
               </div>
 
               <div className="action-area">
-                <Button
-                  className={`check-in-button ${!isWithinRange() ? 'disabled' : ''}`}
-                  color="primary"
-                  size="md"
-                  radius="lg"
-                  isLoading={checkingIn}
-                  isDisabled={checkingIn || !isWithinRange()}
-                  onPress={handleCheckIn}
-                  fullWidth
+                <button
+                  type="button"
+                  className={`check-in-button ${checkingIn ? 'loading' : ''} ${checkState === 'done' ? 'done' : ''} ${!isWithinRange() && checkState !== 'done' ? 'disabled' : ''}`}
+                  disabled={checkingIn || checkState === 'done' || !isWithinRange()}
+                  onClick={handleCheckIn}
                 >
-                  {checkingIn ? '打卡中' : '上班打卡'}
-                </Button>
-                
-                {!isWithinRange() && (
+                  {checkingIn ? (
+                    <span className="button-spinner" />
+                  ) : (
+                    <>
+                      <span className="button-text">{checkState === 'done' ? '已完成' : checkState === 'out' ? '下班打卡' : '上班打卡'}</span>
+                      <span className="button-sub">{checkState === 'done' ? '明天再见~' : checkState === 'out' ? '打完卡就可以下班啦' : '点击开始上班'}</span>
+                    </>
+                  )}
+                </button>
+
+                {checkState === 'done' && (
+                  <div className="range-warning" style={{ color: 'var(--success-color)' }}>
+                    <CheckCircle2 size={16} /> 今日上下班卡均已打卡成功
+                  </div>
+                )}
+                {checkState !== 'done' && !isWithinRange() && (
                   <div className="range-warning">
                     <XCircle size={16} /> 您不在打卡范围内
                   </div>
                 )}
-                {locationAccuracy !== null && locationAccuracy > 50 && (
+                {locationAccuracy !== null && locationAccuracy > 50 && checkState !== 'done' && (
                   <div className="range-warning" style={{ marginTop: 8 }}>
                     <XCircle size={16} /> 当前定位精度较低（约 {Math.round(locationAccuracy)} 米），建议移动到空旷处或稍候再定位
                   </div>
@@ -333,22 +384,36 @@ export default function UserDashboard() {
               </div>
               <div className="records-list">
                 {records.length > 0 ? (
-                  records.map((record) => (
-                    <div key={record.id} className="record-item">
-                      <div className="record-time">
-                        {dayjs(record.timestamp * 1000).format('HH:mm')}
-                      </div>
-                      <div className="record-info">
-                        <div className="record-status">
-                          <CheckCircle2 size={16} style={{ color: 'var(--success-color)' }} />
-                          <span>打卡成功</span>
+                  records.map((record) => {
+                    const isSuccess = record.status === 'success';
+                    const typeLabel = record.checkType === 'out' ? '下班卡' : record.checkType === 'in' ? '上班卡' : isSuccess ? '打卡' : '异常';
+                    return (
+                      <div key={record.id} className="record-item">
+                        <div className="record-time">
+                          {dayjs(record.timestamp * 1000).format('HH:mm')}
                         </div>
-                        <div className="record-loc">
-                          {assignedLocation.name}
+                        <div className="record-info">
+                          <div className="record-status">
+                            {isSuccess ? (
+                              <CheckCircle2 size={16} style={{ color: 'var(--success-color)' }} />
+                            ) : (
+                              <XCircle size={16} style={{ color: 'var(--error-color)' }} />
+                            )}
+                            <span>{isSuccess ? '打卡成功' : '打卡失败'}</span>
+                            <Chip size="sm" color={isSuccess ? (record.checkType === 'out' ? 'warning' : 'success') : 'danger'} variant="flat" className="ml-1">
+                              {typeLabel}
+                            </Chip>
+                          </div>
+                          <div className="record-loc">
+                            {dayjs(record.timestamp * 1000).format('MM月DD日')} · {assignedLocation.name}
+                          </div>
+                          {!isSuccess && record.errorMessage && (
+                            <div className="record-error">{record.errorMessage}</div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="empty-records">今日暂无打卡记录</div>
                 )}

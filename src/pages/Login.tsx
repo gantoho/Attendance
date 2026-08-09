@@ -203,7 +203,7 @@ export default function Login() {
               radius="lg"
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button size="md" radius="lg" onPress={onTestServer}>测试连接</Button>
+              <Button size="md" radius="lg" variant="light" onPress={onTestServer}>测试连接</Button>
             </div>
             <p>
               当前：{localStorage.getItem('server_base_url') || '本地数据库模式'}

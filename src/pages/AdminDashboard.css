@@ -92,6 +92,143 @@
   border-top: 1px solid var(--glass-border);
 }
 
+/* 考勤记录：统计卡 */
+.att-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.att-stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.att-stat-item svg {
+  color: var(--primary-color);
+  margin-bottom: 2px;
+}
+
+.att-stat-item em {
+  font-style: normal;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+
+.att-stat-item span {
+  color: var(--text-secondary);
+}
+
+.att-stat-item.danger svg,
+.att-stat-item.danger em {
+  color: var(--error-color);
+}
+
+/* 考勤记录：按天分组 */
+.att-day-group {
+  margin-bottom: var(--spacing-sm);
+}
+
+.att-day-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.att-day-header .att-day-week {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.att-day-header em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* 考勤记录：员工行 */
+.att-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.att-user-row:last-child {
+  margin-bottom: 0;
+}
+
+.att-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.att-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.att-check-pair {
+  display: flex;
+  gap: 12px;
+}
+
+.att-check {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.att-check span {
+  color: var(--text-secondary);
+}
+
+.att-check em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.att-check.ok em {
+  color: var(--success-color);
+}
+
+.att-check.fail em {
+  color: var(--error-color);
+}
+
+.empty-records {
+  text-align: center;
+  padding: var(--spacing-md) 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 /* 暗色细节优化 */
 :root.theme-dark .admin-list-item:hover {
   box-shadow: var(--shadow-md);

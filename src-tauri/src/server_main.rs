@@ -150,7 +150,8 @@ async fn update_user_location(
     let db = state.lock().await;
     match db.get_user(&id) {
         Ok(Some(mut user)) => {
-            user.location_id = Some(payload.locationId);
+            // 传空字符串表示清除已分配的位置
+            user.location_id = if payload.locationId.trim().is_empty() { None } else { Some(payload.locationId) };
             if let Err(e) = db.save_user(&user) {
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
             } else {
@@ -267,6 +268,30 @@ async fn get_records_by_admin(
     Json(records)
 }
 
+/// 统计用户当天成功的打卡次数（用于每日两次打卡限制）
+fn count_today_success(db: &Database, user_id: &str) -> usize {
+    let records = db.get_records_by_user(user_id).unwrap_or_default();
+    let today = chrono::Local::now().date_naive();
+    let day_start = today
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_local_timezone(chrono::Local)
+        .single()
+        .expect("today 0点应存在本地时间")
+        .timestamp();
+    let day_end = (today + chrono::Duration::days(1))
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_local_timezone(chrono::Local)
+        .single()
+        .expect("明日 0点应存在本地时间")
+        .timestamp();
+    records
+        .iter()
+        .filter(|r| r.status == models::AttendanceStatus::Success && r.timestamp >= day_start && r.timestamp < day_end)
+        .count()
+}
+
 async fn check_in(
     State(state): State<AppState>,
     Json(req): Json<CheckInRequest>,
@@ -276,6 +301,12 @@ async fn check_in(
         Ok(Some(u)) => u,
         _ => return Json(CheckInResponse { success: false, record: None, message: Some("用户不存在".into()) }),
     };
+    // 每日两次打卡限制：第一次为上班卡，第二次为下班卡
+    let today_success_count = count_today_success(&db, &req.user_id);
+    if today_success_count >= 2 {
+        return Json(CheckInResponse { success: false, record: None, message: Some("今日打卡次数已达上限（上班/下班已打满）".into()) });
+    }
+    let check_type = if today_success_count == 0 { "in" } else { "out" };
     let location_id = match user.location_id {
         Some(id) => id,
         None => return Json(CheckInResponse { success: false, record: None, message: Some("用户未分配打卡位置".into()) }),
@@ -287,15 +318,15 @@ async fn check_in(
     let distance = calculate_distance(req.latitude, req.longitude, location.latitude, location.longitude);
     if distance <= location.radius {
         let record = models::AttendanceRecord::new(
-            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Success, None,
+            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Success, Some(check_type.into()), None,
         );
         match db.save_record(&record) {
-            Ok(_) => Json(CheckInResponse { success: true, record: Some(record), message: Some("打卡成功".into()) }),
+            Ok(_) => Json(CheckInResponse { success: true, record: Some(record), message: Some(if check_type == "in" { "上班打卡成功".into() } else { "下班打卡成功".into() }) }),
             Err(e) => Json(CheckInResponse { success: false, record: None, message: Some(format!("保存记录失败: {}", e)) }),
         }
     } else {
         let record = models::AttendanceRecord::new(
-            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Failed, Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
+            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Failed, Some(check_type.into()), Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
         );
         let _ = db.save_record(&record);
         Json(CheckInResponse { success: false, record: Some(record), message: Some(format!("不在打卡范围内，距离 {:.2} 米", distance)) })

@@ -67,16 +67,24 @@
   height: 140px;
   border-radius: 50%;
   border: none;
+  outline: none;
   background: linear-gradient(135deg, var(--primary-color) 0%, #0050b3 100%);
   color: white;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   cursor: pointer;
   box-shadow: 0 10px 26px rgba(0, 122, 255, 0.28);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
   overflow: hidden;
+}
+
+.check-in-button.done {
+  background: linear-gradient(135deg, var(--success-color) 0%, #1aa34a 100%);
+  box-shadow: 0 10px 26px rgba(52, 199, 89, 0.3);
 }
 
 .check-in-button::before {
@@ -122,6 +130,76 @@
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 1px;
+}
+
+.button-sub {
+  font-size: 12px;
+  opacity: 0.9;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.button-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.daily-status {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--spacing-md);
+}
+
+.daily-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.daily-chip span {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.daily-chip em {
+  font-style: normal;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.daily-chip.done {
+  border-color: rgba(52, 199, 89, 0.4);
+  background: rgba(52, 199, 89, 0.08);
+}
+
+.daily-chip.done svg {
+  color: var(--success-color);
+}
+
+.daily-chip.done em {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.record-error {
+  font-size: 12px;
+  color: var(--error-color);
+  margin-top: 2px;
 }
 
 .range-warning {
@@ -196,4 +274,7 @@
 }
 :root.theme-dark .record-item {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+:root.theme-dark .daily-chip.done {
+  background: rgba(52, 199, 89, 0.14);
 }

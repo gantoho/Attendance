@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem, Spinner, Chip, Card, CardBody } from '@heroui/react';
-import { User as UserIcon, MapPin, History, LogOut, Plus, Edit, Trash2 } from 'lucide-react';
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem, Spinner, Chip, Card, CardBody, Avatar } from '@heroui/react';
+import { User as UserIcon, MapPin, History, LogOut, Plus, Edit, Trash2, Users, CheckCircle2, XCircle } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { commands } from '../api';
 import { useAuthStore } from '../store/authStore';
 import { useAdminDataStore } from '../store/adminDataStore';
-import type { User, Location } from '../types';
+import type { User, Location, AttendanceRecord } from '../types';
 import MapSelector from '../components/MapSelector';
 import MobileLayout from '../components/MobileLayout';
 import ThemeToggle from '../components/ThemeToggle';
@@ -24,9 +24,11 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [locationMapReady, setLocationMapReady] = useState(false);
   const [latLngSelected, setLatLngSelected] = useState(false);
-  const [userFormState, setUserFormState] = useState<{ username: string; password: string }>({ username: '', password: '' });
+  const [userFormState, setUserFormState] = useState<{ username: string; password: string; confirmPassword: string }>({ username: '', password: '', confirmPassword: '' });
   const [locFormState, setLocFormState] = useState<{ name: string; latitude?: number; longitude?: number; radius: number }>({ name: '', radius: 200 });
   const [assignLocId, setAssignLocId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'user' | 'location'; id: string; name: string } | null>(null);
+  const [logoutVisible, setLogoutVisible] = useState(false);
 
   const users = useAdminDataStore((s) => s.users);
   const locations = useAdminDataStore((s) => s.locations);
@@ -75,7 +77,7 @@ export default function AdminDashboard() {
       });
       notify.success('创建用户成功');
       setUserModalVisible(false);
-      setUserFormState({ username: '', password: '' });
+      setUserFormState({ username: '', password: '', confirmPassword: '' });
       await refreshUsers();
     } catch (error: any) {
       const errorMessage = error?.message || error || '创建用户失败';
@@ -169,7 +171,7 @@ export default function AdminDashboard() {
     if (!selectedUser) return;
     try {
       await commands.updateUserLocation(selectedUser.id, values.locationId);
-      notify.success('分配位置成功');
+      notify.success(values.locationId ? '分配位置成功' : '已清除分配位置');
       setAssignLocationModalVisible(false);
       setSelectedUser(null);
       await refreshUsers();
@@ -184,6 +186,31 @@ export default function AdminDashboard() {
     logout();
     navigate('/login');
   };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      if (deleteTarget.type === 'user') {
+        await handleDeleteUser(deleteTarget.id);
+      } else {
+        await handleDeleteLocation(deleteTarget.id);
+      }
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  // 添加员工表单校验
+  const userFormErrors = {
+    username: userFormState.username.trim() ? undefined : '请输入用户名',
+    password: userFormState.password.length >= 6 ? undefined : '密码至少 6 位',
+    confirmPassword:
+      userFormState.confirmPassword && userFormState.confirmPassword === userFormState.password
+        ? undefined
+        : '两次输入的密码不一致',
+  };
+  const userFormValid = !userFormErrors.username && !userFormErrors.password && !userFormErrors.confirmPassword;
+  const locationFormValid = !!locFormState.name.trim() && !!locFormState.latitude && !!locFormState.longitude;
 
   const renderContent = () => {
     switch (selectedMenu) {
@@ -237,11 +264,7 @@ export default function AdminDashboard() {
                       >
                         分配
                       </Button>
-                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={async () => {
-                        if (window.confirm('确定删除吗？')) {
-                          await handleDeleteUser(u.id);
-                        }
-                      }}>
+                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={() => setDeleteTarget({ type: 'user', id: u.id, name: u.username })}>
                         删除
                       </Button>
                     </div>
@@ -303,11 +326,7 @@ export default function AdminDashboard() {
                       >
                         编辑
                       </Button>
-                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={async () => {
-                        if (window.confirm('确定删除吗？')) {
-                          await handleDeleteLocation(l.id);
-                        }
-                      }}>
+                      <Button size="sm" radius="lg" color="danger" variant="bordered" startContent={<Trash2 />} onPress={() => setDeleteTarget({ type: 'location', id: l.id, name: l.name })}>
                         删除
                       </Button>
                     </div>
@@ -318,46 +337,112 @@ export default function AdminDashboard() {
             </CardBody>
           </Card>
         );
-      case 'records':
+      case 'records': {
+        const sortedRecords = [...records].sort((a, b) => b.timestamp - a.timestamp);
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        const todayRecs = sortedRecords.filter((r) => dayjs(r.timestamp * 1000).format('YYYY-MM-DD') === todayStr);
+        const todaySuccessUsers = new Set(todayRecs.filter((r) => r.status === 'success').map((r) => r.userId)).size;
+        const todaySuccessCount = todayRecs.filter((r) => r.status === 'success').length;
+        const todayFailedCount = todayRecs.filter((r) => r.status === 'failed').length;
+
+        // 按日期 → 按员工 聚合
+        const dayGroups = new Map<string, Map<string, AttendanceRecord[]>>();
+        for (const r of sortedRecords) {
+          const date = dayjs(r.timestamp * 1000).format('YYYY-MM-DD');
+          if (!dayGroups.has(date)) dayGroups.set(date, new Map());
+          const byUser = dayGroups.get(date)!;
+          if (!byUser.has(r.userId)) byUser.set(r.userId, []);
+          byUser.get(r.userId)!.push(r);
+        }
+        const dayGroupEntries = Array.from(dayGroups.entries()).slice(0, 7);
+
+        const renderUserRow = (userId: string, recs: AttendanceRecord[]) => {
+          const u = users.find((x) => x.id === userId);
+          const sorted = [...recs].sort((a, b) => a.timestamp - b.timestamp);
+          const morning =
+            sorted.find((r) => r.checkType === 'in' && r.status === 'success') ?? sorted.find((r) => r.checkType === 'in');
+          const evening =
+            sorted.find((r) => r.checkType === 'out' && r.status === 'success') ?? sorted.find((r) => r.checkType === 'out');
+          const successCount = sorted.filter((r) => r.status === 'success').length;
+          const statusLabel = successCount >= 2 ? '正常' : successCount === 1 ? '部分' : '缺卡';
+          const statusColor = successCount >= 2 ? 'success' : successCount === 1 ? 'warning' : 'danger';
+          return (
+            <div key={userId} className="att-user-row">
+              <Avatar name={(u?.username || '?').substring(0, 1).toUpperCase()} color="primary" size="sm" />
+              <div className="att-user-meta">
+                <div className="att-user-name">{u?.username || '未知员工'}</div>
+                <div className="att-check-pair">
+                  <div className={`att-check ${morning ? (morning.status === 'success' ? 'ok' : 'fail') : 'miss'}`}>
+                    <span>上班</span>
+                    <em>{morning ? dayjs(morning.timestamp * 1000).format('HH:mm') : '--'}</em>
+                  </div>
+                  <div className={`att-check ${evening ? (evening.status === 'success' ? 'ok' : 'fail') : 'miss'}`}>
+                    <span>下班</span>
+                    <em>{evening ? dayjs(evening.timestamp * 1000).format('HH:mm') : '--'}</em>
+                  </div>
+                </div>
+              </div>
+              <Chip size="sm" color={statusColor} variant="flat">{statusLabel}</Chip>
+            </div>
+          );
+        };
+
         return (
           <Card className="mb-3" radius="lg" shadow="sm">
             <CardBody>
-            <div className="card-header">
-              <h3>考勤记录</h3>
-            </div>
-            {loadingRecords || loadingLocations ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-                <Spinner label="加载中..." />
+              <div className="card-header">
+                <h3>考勤记录</h3>
               </div>
-            ) : (
-              <div className="admin-list">
-                {records.map(r => {
-                  const userName = users.find(u => u.id === r.userId)?.username || '未知员工';
-                  const locationName = locations.find(l => l.id === r.locationId)?.name || '未知地点';
-                  return (
-                    <div key={r.id} className="admin-list-item">
-                      <div className="list-item-title">{userName}</div>
-                      <div className="list-item-sub">
-                        <MapPin size={16} />
-                        {locationName}
-                      </div>
-                      <div className="list-item-sub">
-                        <History size={16} />
-                        {dayjs(r.timestamp * 1000).format('YYYY-MM-DD HH:mm:ss')}
-                      </div>
-                      <div className="list-item-actions" style={{ borderTop: 'none', marginTop: '8px', paddingTop: 0 }}>
-                        <Chip color={r.status === 'success' ? 'success' : 'danger'} variant="flat" className="rounded-md">
-                          {r.status === 'success' ? '打卡正常' : '打卡异常'}
-                        </Chip>
-                      </div>
+              {loadingRecords || loadingLocations ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                  <Spinner label="加载中..." />
+                </div>
+              ) : sortedRecords.length === 0 ? (
+                <div className="empty-records">暂无考勤记录</div>
+              ) : (
+                <>
+                  <div className="att-stats">
+                    <div className="att-stat-item">
+                      <Users size={18} />
+                      <em>{todaySuccessUsers}</em>
+                      <span>今日出勤</span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <div className="att-stat-item">
+                      <CheckCircle2 size={18} />
+                      <em>{todaySuccessCount}</em>
+                      <span>成功打卡</span>
+                    </div>
+                    <div className="att-stat-item danger">
+                      <XCircle size={18} />
+                      <em>{todayFailedCount}</em>
+                      <span>异常记录</span>
+                    </div>
+                  </div>
+
+                  {dayGroupEntries.map(([date, byUser]) => {
+                    const label =
+                      date === todayStr
+                        ? '今天'
+                        : dayjs(date).isSame(dayjs().subtract(1, 'day'), 'day')
+                          ? '昨天'
+                          : dayjs(date).format('M月D日');
+                    return (
+                      <div key={date} className="att-day-group">
+                        <div className="att-day-header">
+                          <span>{label}</span>
+                          <span className="att-day-week">{dayjs(date).format('ddd')}</span>
+                          <em>{byUser.size} 人</em>
+                        </div>
+                        {Array.from(byUser.entries()).map(([userId, recs]) => renderUserRow(userId, recs))}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </CardBody>
           </Card>
         );
+      }
       default:
         return null;
     }
@@ -369,7 +454,7 @@ export default function AdminDashboard() {
       headerExtra={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ThemeToggle />
-          <Button size="md" radius="lg" variant="light" startContent={<LogOut />} onPress={handleLogout} className="text-[var(--text-secondary)]">
+          <Button size="md" radius="lg" variant="light" startContent={<LogOut />} onPress={() => setLogoutVisible(true)} className="text-[var(--text-secondary)]">
             退出
           </Button>
         </div>
@@ -415,6 +500,8 @@ export default function AdminDashboard() {
                 label="用户名"
                 placeholder="请输入用户名"
                 value={userFormState.username}
+                isInvalid={!!userFormErrors.username}
+                errorMessage={userFormErrors.username}
                 onChange={(e) => setUserFormState((s) => ({ ...s, username: e.target.value }))}
               />
               <Input
@@ -422,15 +509,28 @@ export default function AdminDashboard() {
                 radius="lg"
                 label="密码"
                 type="password"
-                placeholder="请输入密码"
+                placeholder="至少 6 位密码"
                 value={userFormState.password}
+                isInvalid={!!userFormErrors.password}
+                errorMessage={userFormErrors.password}
                 onChange={(e) => setUserFormState((s) => ({ ...s, password: e.target.value }))}
+              />
+              <Input
+                size="md"
+                radius="lg"
+                label="确认密码"
+                type="password"
+                placeholder="再次输入密码"
+                value={userFormState.confirmPassword}
+                isInvalid={!!userFormErrors.confirmPassword}
+                errorMessage={userFormErrors.confirmPassword}
+                onChange={(e) => setUserFormState((s) => ({ ...s, confirmPassword: e.target.value }))}
               />
             </div>
           </ModalBody>
           <ModalFooter>
             <Button size="md" radius="lg" variant="light" onPress={() => setUserModalVisible(false)}>取消</Button>
-            <Button size="md" radius="lg" color="primary" onPress={() => handleCreateUser(userFormState)}>保存</Button>
+            <Button size="md" radius="lg" color="primary" isDisabled={!userFormValid} onPress={() => handleCreateUser(userFormState)}>保存</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -490,7 +590,7 @@ export default function AdminDashboard() {
               setEditingLocation(null);
               setLocFormState({ name: '', radius: 200, latitude: undefined, longitude: undefined });
             }}>取消</Button>
-            <Button size="md" radius="lg" color="primary" isDisabled={!locationMapReady || !latLngSelected} onPress={async () => {
+            <Button size="md" radius="lg" color="primary" isDisabled={!locationMapReady || !latLngSelected || !locationFormValid} onPress={async () => {
               const values = { 
                 name: locFormState.name, 
                 latitude: locFormState.latitude!, 
@@ -517,28 +617,62 @@ export default function AdminDashboard() {
               radius="lg"
               label="选择网点"
               placeholder="请选择位置"
-              selectedKeys={assignLocId ? new Set([assignLocId]) : new Set([])}
+              selectedKeys={assignLocId ? new Set([assignLocId]) : new Set(['none'])}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys as Set<string>)[0];
-                setAssignLocId(first ?? null);
+                setAssignLocId(first && first !== 'none' ? first : '');
               }}
             >
-              {locations.map((loc) => (
-                <SelectItem key={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
+              {[
+                <SelectItem key="none">未分配</SelectItem>,
+                ...locations.map((loc) => (
+                  <SelectItem key={loc.id}>
+                    {loc.name}
+                  </SelectItem>
+                )),
+              ]}
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setAssignLocationModalVisible(false)}>取消</Button>
+            <Button size="md" radius="lg" variant="light" onPress={() => setAssignLocationModalVisible(false)}>取消</Button>
             <Button 
+              size="md"
+              radius="lg"
               color="primary" 
-              isDisabled={!assignLocId || !selectedUser}
-              onPress={() => handleAssignLocationSubmit({ locationId: assignLocId! })}
+              isDisabled={!selectedUser}
+              onPress={() => handleAssignLocationSubmit({ locationId: assignLocId ?? '' })}
             >
               保存
             </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <ModalContent>
+          <ModalHeader>删除确认</ModalHeader>
+          <ModalBody>
+            <p>
+              确定要删除{deleteTarget?.type === 'user' ? '员工' : '考勤点'} <strong>{deleteTarget?.name}</strong> 吗？
+              <br />该操作不可恢复。
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setDeleteTarget(null)}>取消</Button>
+            <Button color="danger" onPress={confirmDelete}>删除</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={logoutVisible} onOpenChange={setLogoutVisible}>
+        <ModalContent>
+          <ModalHeader>退出登录</ModalHeader>
+          <ModalBody>
+            <p>确定要退出当前账号吗？</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button size="md" radius="lg" variant="light" onPress={() => setLogoutVisible(false)}>取消</Button>
+            <Button size="md" radius="lg" color="danger" onPress={handleLogout}>退出</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

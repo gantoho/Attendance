@@ -123,7 +123,12 @@ pub fn update_user_location(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "用户不存在".to_string())?;
     
-    user.location_id = Some(location_id);
+    // 传空字符串表示清除已分配的位置
+    if location_id.trim().is_empty() {
+        user.location_id = None;
+    } else {
+        user.location_id = Some(location_id);
+    }
     
     db.save_user(&user).map_err(|e| e.to_string())?;
     Ok(user)
@@ -253,6 +258,32 @@ fn calculate_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     R * c
 }
 
+/// 统计用户当天成功的打卡次数（用于每日两次打卡限制）
+fn count_today_success(db: &Database, user_id: &str) -> Result<usize, String> {
+    let records = db.get_records_by_user(user_id).map_err(|e| e.to_string())?;
+    let today = chrono::Local::now().date_naive();
+    let day_start = today
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_local_timezone(chrono::Local)
+        .single()
+        .expect("today 0点应存在本地时间")
+        .timestamp();
+    let day_end = (today + chrono::Duration::days(1))
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_local_timezone(chrono::Local)
+        .single()
+        .expect("明日 0点应存在本地时间")
+        .timestamp();
+    Ok(records
+        .iter()
+        .filter(|r| {
+            r.status == AttendanceStatus::Success && r.timestamp >= day_start && r.timestamp < day_end
+        })
+        .count())
+}
+
 #[tauri::command]
 pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInResponse {
     let db = state.lock().unwrap();
@@ -274,6 +305,26 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             };
         }
     };
+    
+    // 每日两次打卡限制：第一次为上班卡，第二次为下班卡
+    let today_success_count = match count_today_success(&db, &request.user_id) {
+        Ok(c) => c,
+        Err(e) => {
+            return CheckInResponse {
+                success: false,
+                record: None,
+                message: Some(format!("查询打卡记录失败: {}", e)),
+            };
+        }
+    };
+    if today_success_count >= 2 {
+        return CheckInResponse {
+            success: false,
+            record: None,
+            message: Some("今日打卡次数已达上限（上班/下班已打满）".to_string()),
+        };
+    }
+    let check_type = if today_success_count == 0 { "in" } else { "out" };
     
     let location_id = match &user.location_id {
         Some(id) => id.clone(),
@@ -318,6 +369,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             request.latitude,
             request.longitude,
             AttendanceStatus::Success,
+            Some(check_type.to_string()),
             None,
         );
         
@@ -325,7 +377,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             Ok(_) => CheckInResponse {
                 success: true,
                 record: Some(record),
-                message: Some("打卡成功".to_string()),
+                message: Some(if check_type == "in" { "上班打卡成功".to_string() } else { "下班打卡成功".to_string() }),
             },
             Err(e) => CheckInResponse {
                 success: false,
@@ -340,6 +392,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             request.latitude,
             request.longitude,
             AttendanceStatus::Failed,
+            Some(check_type.to_string()),
             Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
         );
         
