@@ -51,7 +51,8 @@ export interface AttendanceRecord {
   longitude: number;
   timestamp: number;
   status: 'success' | 'failed';
-  checkType?: string;
+  /** 打卡类型：in 上班卡 / out 下班卡（openapi 契约字段 recordType） */
+  recordType?: 'in' | 'out';
   errorMessage?: string;
   createTime?: string | null;
   updateTime?: string | null;
@@ -71,6 +72,8 @@ export interface LoginResponse {
 
 export interface CheckInRequest {
   user_id: string;
+  /** 打卡类型：in 上班卡 / out 下班卡（openapi 契约必填字段 record_type） */
+  record_type: 'in' | 'out';
   latitude: number;
   longitude: number;
 }

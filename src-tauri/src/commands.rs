@@ -324,7 +324,12 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             message: Some("今日打卡次数已达上限（上班/下班已打满）".to_string()),
         };
     }
-    let check_type = if today_success_count == 0 { "in" } else { "out" };
+    // 打卡类型由客户端按 openapi 契约传入（in 上班卡 / out 下班卡）
+    let record_type = request.record_type.clone();
+    let type_label = match record_type {
+        RecordType::In => "上班",
+        RecordType::Out => "下班",
+    };
     
     let location_id = match &user.location_id {
         Some(id) => id.clone(),
@@ -369,7 +374,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             request.latitude,
             request.longitude,
             AttendanceStatus::Success,
-            Some(check_type.to_string()),
+            Some(record_type.clone()),
             None,
         );
         
@@ -377,7 +382,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             Ok(_) => CheckInResponse {
                 success: true,
                 record: Some(record),
-                message: Some(if check_type == "in" { "上班打卡成功".to_string() } else { "下班打卡成功".to_string() }),
+                message: Some(format!("{}打卡成功", type_label)),
             },
             Err(e) => CheckInResponse {
                 success: false,
@@ -392,7 +397,7 @@ pub fn check_in(state: State<AppState>, request: CheckInRequest) -> CheckInRespo
             request.latitude,
             request.longitude,
             AttendanceStatus::Failed,
-            Some(check_type.to_string()),
+            Some(record_type),
             Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
         );
         

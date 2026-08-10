@@ -360,9 +360,9 @@ export default function AdminDashboard() {
           const u = users.find((x) => x.id === userId);
           const sorted = [...recs].sort((a, b) => a.timestamp - b.timestamp);
           const morning =
-            sorted.find((r) => r.checkType === 'in' && r.status === 'success') ?? sorted.find((r) => r.checkType === 'in');
+            sorted.find((r) => r.recordType === 'in' && r.status === 'success') ?? sorted.find((r) => r.recordType === 'in');
           const evening =
-            sorted.find((r) => r.checkType === 'out' && r.status === 'success') ?? sorted.find((r) => r.checkType === 'out');
+            sorted.find((r) => r.recordType === 'out' && r.status === 'success') ?? sorted.find((r) => r.recordType === 'out');
           const successCount = sorted.filter((r) => r.status === 'success').length;
           const statusLabel = successCount >= 2 ? '正常' : successCount === 1 ? '部分' : '缺卡';
           const statusColor = successCount >= 2 ? 'success' : successCount === 1 ? 'warning' : 'danger';

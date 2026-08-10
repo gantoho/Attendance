@@ -306,7 +306,12 @@ async fn check_in(
     if today_success_count >= 2 {
         return Json(CheckInResponse { success: false, record: None, message: Some("今日打卡次数已达上限（上班/下班已打满）".into()) });
     }
-    let check_type = if today_success_count == 0 { "in" } else { "out" };
+    // 打卡类型由客户端按 openapi 契约传入（in 上班卡 / out 下班卡）
+    let record_type = req.record_type.clone();
+    let type_label = match record_type {
+        models::RecordType::In => "上班",
+        models::RecordType::Out => "下班",
+    };
     let location_id = match user.location_id {
         Some(id) => id,
         None => return Json(CheckInResponse { success: false, record: None, message: Some("用户未分配打卡位置".into()) }),
@@ -318,15 +323,15 @@ async fn check_in(
     let distance = calculate_distance(req.latitude, req.longitude, location.latitude, location.longitude);
     if distance <= location.radius {
         let record = models::AttendanceRecord::new(
-            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Success, Some(check_type.into()), None,
+            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Success, Some(record_type.clone()), None,
         );
         match db.save_record(&record) {
-            Ok(_) => Json(CheckInResponse { success: true, record: Some(record), message: Some(if check_type == "in" { "上班打卡成功".into() } else { "下班打卡成功".into() }) }),
+            Ok(_) => Json(CheckInResponse { success: true, record: Some(record), message: Some(format!("{}打卡成功", type_label)) }),
             Err(e) => Json(CheckInResponse { success: false, record: None, message: Some(format!("保存记录失败: {}", e)) }),
         }
     } else {
         let record = models::AttendanceRecord::new(
-            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Failed, Some(check_type.into()), Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
+            req.user_id.clone(), location.id.clone(), req.latitude, req.longitude, models::AttendanceStatus::Failed, Some(record_type), Some(format!("距离打卡位置 {:.2} 米，超出范围", distance)),
         );
         let _ = db.save_record(&record);
         Json(CheckInResponse { success: false, record: Some(record), message: Some(format!("不在打卡范围内，距离 {:.2} 米", distance)) })

@@ -30,6 +30,14 @@ pub struct Location {
     pub admin_id: String,
 }
 
+/// 打卡类型：in 上班卡 / out 下班卡（与 openapi.json 契约一致）
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RecordType {
+    In,
+    Out,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttendanceRecord {
@@ -42,7 +50,7 @@ pub struct AttendanceRecord {
     pub status: AttendanceStatus,
     /// 打卡类型："in" 上班卡 / "out" 下班卡
     #[serde(default)]
-    pub check_type: Option<String>,
+    pub record_type: Option<RecordType>,
     pub error_message: Option<String>,
 }
 
@@ -97,6 +105,7 @@ pub struct LoginResponse {
 #[derive(Debug, Deserialize)]
 pub struct CheckInRequest {
     pub user_id: String,
+    pub record_type: RecordType,
     pub latitude: f64,
     pub longitude: f64,
 }
@@ -141,7 +150,7 @@ impl AttendanceRecord {
         latitude: f64,
         longitude: f64,
         status: AttendanceStatus,
-        check_type: Option<String>,
+        record_type: Option<RecordType>,
         error_message: Option<String>,
     ) -> Self {
         Self {
@@ -152,7 +161,7 @@ impl AttendanceRecord {
             longitude,
             timestamp: chrono::Utc::now().timestamp(),
             status,
-            check_type,
+            record_type,
             error_message,
         }
     }

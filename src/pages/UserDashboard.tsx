@@ -71,8 +71,9 @@ export default function UserDashboard() {
     [records]
   );
   const successToday = useMemo(() => todayRecords.filter((r) => r.status === 'success'), [todayRecords]);
-  const morningRecord = successToday[0] ?? null;
-  const eveningRecord = successToday[1] ?? null;
+  // 优先按 recordType 区分上下班卡，兼容旧数据（无 recordType）时按时间顺序回退
+  const morningRecord = successToday.find((r) => r.recordType === 'in') ?? successToday[0] ?? null;
+  const eveningRecord = successToday.find((r) => r.recordType === 'out') ?? successToday[1] ?? null;
   const checkState: CheckState = successToday.length === 0 ? 'in' : successToday.length === 1 ? 'out' : 'done';
 
   const loadAssignedLocation = async () => {
@@ -215,6 +216,7 @@ export default function UserDashboard() {
     try {
       const response = await commands.checkIn({
         user_id: user.id,
+        record_type: checkState === 'out' ? 'out' : 'in',
         latitude: location.latitude,
         longitude: location.longitude,
       });
@@ -386,7 +388,7 @@ export default function UserDashboard() {
                 {records.length > 0 ? (
                   records.map((record) => {
                     const isSuccess = record.status === 'success';
-                    const typeLabel = record.checkType === 'out' ? '下班卡' : record.checkType === 'in' ? '上班卡' : isSuccess ? '打卡' : '异常';
+                    const typeLabel = record.recordType === 'out' ? '下班卡' : record.recordType === 'in' ? '上班卡' : isSuccess ? '打卡' : '异常';
                     return (
                       <div key={record.id} className="record-item">
                         <div className="record-time">
@@ -400,7 +402,7 @@ export default function UserDashboard() {
                               <XCircle size={16} style={{ color: 'var(--error-color)' }} />
                             )}
                             <span>{isSuccess ? '打卡成功' : '打卡失败'}</span>
-                            <Chip size="sm" color={isSuccess ? (record.checkType === 'out' ? 'warning' : 'success') : 'danger'} variant="flat" className="ml-1">
+                            <Chip size="sm" color={isSuccess ? (record.recordType === 'out' ? 'warning' : 'success') : 'danger'} variant="flat" className="ml-1">
                               {typeLabel}
                             </Chip>
                           </div>
